@@ -18,3 +18,4 @@ V = @
 # following line and set it to the full path to QEMU.
 #
 # QEMU=
+QEMU=/usr/local/qemu/bin/qemu-system-i386
