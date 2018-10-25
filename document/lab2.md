@@ -32,20 +32,19 @@ struct PageInfo {
 };
 ```
 pageInfo主要有两个变量:
-
 pp_link表示下一个空闲页，如果pp_link=0,则表示这个页面被分配了，否则就表示未被分配，是空闲页。
-
 pp_ref表示页面被引用的次数，如果为0，表示是空闲页。
 ###第一次补充的代码
 为pages申请地址空间，并初始化为0
 ###memset
 string.h中定义
 `void *	memset(void *dst, int c, size_t len);`
-函数解释：将dst中当前位置后面的len个字节 用 c 替换并返回 dst 。
+函数解释：将dst中当前位置后面的len个字节用c替换并返回 dst 。
 作用是在一段内存块中填充某个给定的值，它是对较大的结构体或数组进行清零操作的一种最快方法。
 ##page_init
 初始化pages数组以及page_free_list，将已经被系统使用的剔除
 >挺坑的，一开始不知道boot_alloc中end那个还是虚拟地址，要减去KERENBASE转化为物理地址
+利用 boot_alloc 函数来找到第一个能分配的页面
 
 ###IOPHYSMEM && EXTPHYSMEM
 memlayout.h中定义
@@ -63,7 +62,7 @@ memlayout.h中定义
 #define	KERNBASE	0xF0000000
 ```
 ##page_alloc
-
+申请一页的空间，需要对page_free_list进行更新，以及对页进行初始化
 ###ALLOC_ZERO
 pmap.h中定义
 ```
@@ -89,3 +88,21 @@ page2kva(struct PageInfo *pp)
 ```
 KADDR：将物理地址转换为虚拟地址
 page2kva：将PageInfo结构转换为相应的虚拟地址
+##page_free
+对申请的空间进行释放，同时对page_free_list和收回的page进行修改
+##check_page_alloc
+检查page_alloc是否成功，成功则
+`cprintf("check_page_alloc() succeeded!\n");`
+###assert
+assert.h中定义
+```
+#define assert(x)		\
+	do { if (!(x)) panic("assertion failed: %s", #x); } while (0)
+```
+>不太懂panic的作用,貌似是个系统中断？感觉语法和printf差不多
+
+```
+void _panic(const char*, int, const char*, ...) __attribute__((noreturn));
+
+#define panic(...) _panic(__FILE__, __LINE__, __VA_ARGS__)
+```

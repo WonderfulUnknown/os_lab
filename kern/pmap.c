@@ -99,7 +99,9 @@ boot_alloc(uint32_t n)
 	//
 	// LAB 2: Your code here.
 	result = nextfree;
-	nextfree += ROUNDUP(n,PGSIZE);
+	nextfree += n;
+	nextfree = ROUNDUP( (char*)nextfree, PGSIZE);
+	//nextfree += ROUNDUP(n,PGSIZE);
 	return result;
 }
 
@@ -122,7 +124,7 @@ mem_init(void)
 	i386_detect_memory();
 
 	// Remove this line when you're ready to test this function.
-	panic("mem_init: This function is not finished\n");
+	//panic("mem_init: This function is not finished\n");
 
 	//////////////////////////////////////////////////////////////////////
 	// create initial page directory.
@@ -147,6 +149,7 @@ mem_init(void)
 	// Your code goes here:
 	pages = (struct PageInfo*)boot_alloc(npages * sizeof(struct PageInfo));
 	memset(pages,0,npages * sizeof(struct PageInfo));
+
 	//////////////////////////////////////////////////////////////////////
 	// Now that we've allocated the initial kernel data structures, we set
 	// up the list of free physical pages. Once we've done so, all further
@@ -253,20 +256,21 @@ page_init(void)
 	pages[0].pp_ref = 1;
 	pages[0].pp_link = NULL;	
 	size_t i;
+	//临界点是否等于可能存在问题
 	for (i = 1; i < npages; i++) {
 	//  2) The rest of base memory
-		else if(i <= npages_basemem){
+		if(i < npages_basemem){
 			pages[i].pp_ref = 0;
 			pages[i].pp_link = page_free_list;
 			page_free_list = &pages[i];
 		}
 	//  3) Then comes the IO hole 
-		else if(i >= IOPHYSMEM/PGSIZE && i <= EXTPHYSMEM/PGSIZE){
+		else if(i >= IOPHYSMEM/PGSIZE && i < EXTPHYSMEM/PGSIZE){
 			pages[i].pp_ref = 1;
 			pages[i].pp_link = NULL;
 		}
 	//  4) Then extended memory
-		else if(i >= EXTPHYSMEM/PGSIZE && i<= (（int)boot_alloc(0) - KERNBASE)/PGSIZE{
+		else if(i >= EXTPHYSMEM/PGSIZE && i< ((int)boot_alloc(0) - KERNBASE)/PGSIZE){
 			pages[i].pp_ref = 1;
 			pages[i].pp_link = NULL;
 		}
@@ -302,16 +306,27 @@ page_alloc(int alloc_flags)
 	// page_free_list = &(pages[i].pp_link);
 	// pages[i].pp_link = NULL;
 	// return pages[i];
-	
+	//size_t addr;
+	//cprintf("page_alloc\r\n");
+
 	if(page_free_list == NULL)
 		return NULL;
 	else{
-		
+		//addr = page2kva(page_free_list);
+		//int *iq,*ip;
+		//iq=ip;//将把ip中的值拷贝到iq中，这样，指针iq也将指向ip指向的对象
+		struct PageInfo *Page;
+		Page = page_free_list;
+		page_free_list = page_free_list->pp_link;
+		//page_free_list->pp_link = NULL;
+		Page->pp_link = NULL;
+		Page->pp_ref = 1;
+		cprintf("page_alloc\r\n");
+		if(alloc_flags & ALLOC_ZERO)
+			memset(page2kva(Page),'\0',PGSIZE);
+			// memset(page2kva(page_free_list),0,PGSIZE);
+		return Page;
 	}
-	if(alloc_flags & ALLOC_ZERO){
-
-	}
-	return 0;
 }
 
 //
@@ -324,6 +339,20 @@ page_free(struct PageInfo *pp)
 	// Fill this function in
 	// Hint: You may want to panic if pp->pp_ref is nonzero or
 	// pp->pp_link is not NULL.
+
+	// if(pp->pp_link != 0  || pp->pp_ref != 0)
+	if(pp->pp_ref){
+		panic("can't free the page");
+		return;
+	}
+	//	cprinf("can't free the page");
+	//pp->pp_link = page_free_list->pp_link;	
+	pp->pp_link = page_free_list;
+	//page_free_list->pp_link = pp;
+	// page_free_list = &pp;
+	page_free_list = pp;
+	//pp->pp_ref = 0;
+	cprintf("page_free\r\n");
 }
 
 //
