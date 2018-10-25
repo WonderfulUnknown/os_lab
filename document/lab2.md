@@ -8,9 +8,10 @@ struct PageInfo *pages;
 
 所有的单位都是页数（一页4KB）
 ##boot_alloc
->暂时没弄懂kernel bss段是什么意思
+>暂时没弄懂end以及kernel bss段是什么意思
 
 当做页分配器，维护静态变量nextfree，使它始终指向一个可用的虚拟内存地址，按照注释要求，每次申请变量空间时都需要修改nextfree的值
+初始化时boot_alloc(0)返回的就是可用虚拟内存开始的地址
 ###ROUNDUP 
 inc/types.h中定义 
 作用是取整，用来保持变量是4k的倍数（应该是向上取整）
@@ -42,3 +43,49 @@ string.h中定义
 `void *	memset(void *dst, int c, size_t len);`
 函数解释：将dst中当前位置后面的len个字节 用 c 替换并返回 dst 。
 作用是在一段内存块中填充某个给定的值，它是对较大的结构体或数组进行清零操作的一种最快方法。
+##page_init
+初始化pages数组以及page_free_list，将已经被系统使用的剔除
+>挺坑的，一开始不知道boot_alloc中end那个还是虚拟地址，要减去KERENBASE转化为物理地址
+
+###IOPHYSMEM && EXTPHYSMEM
+memlayout.h中定义
+```
+// At IOPHYSMEM (640K) there is a 384K hole for I/O.  From the kernel,
+// IOPHYSMEM can be addressed at KERNBASE + IOPHYSMEM.  The hole ends
+// at physical address EXTPHYSMEM.
+#define IOPHYSMEM	0x0A0000
+#define EXTPHYSMEM	0x100000
+```
+###KERNBASE
+memlayout.h中定义
+```
+// All physical memory mapped at this address
+#define	KERNBASE	0xF0000000
+```
+##page_alloc
+
+###ALLOC_ZERO
+pmap.h中定义
+```
+enum {
+	// For page_alloc, zero the returned physical page.
+	ALLOC_ZERO = 1<<0,
+};
+```
+>没太懂这个值的意义，以及把1左移0位的意义
+
+###page2kva
+pmap.h中定义
+```
+static inline void*
+page2kva(struct PageInfo *pp)
+{
+	return KADDR(page2pa(pp));
+}
+
+/* This macro takes a physical address and returns the corresponding kernel
+ * virtual address.  It panics if you pass an invalid physical address. */
+#define KADDR(pa) _kaddr(__FILE__, __LINE__, pa)
+```
+KADDR：将物理地址转换为虚拟地址
+page2kva：将PageInfo结构转换为相应的虚拟地址
