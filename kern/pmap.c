@@ -248,11 +248,33 @@ page_init(void)
 	// Change the code to reflect this.
 	// NB: DO NOT actually touch the physical memory corresponding to
 	// free pages!
+
+	//  1) Mark physical page 0 as in use.
+	pages[0].pp_ref = 1;
+	pages[0].pp_link = NULL;	
 	size_t i;
-	for (i = 0; i < npages; i++) {
-		pages[i].pp_ref = 0;
-		pages[i].pp_link = page_free_list;
-		page_free_list = &pages[i];
+	for (i = 1; i < npages; i++) {
+	//  2) The rest of base memory
+		else if(i <= npages_basemem){
+			pages[i].pp_ref = 0;
+			pages[i].pp_link = page_free_list;
+			page_free_list = &pages[i];
+		}
+	//  3) Then comes the IO hole 
+		else if(i >= IOPHYSMEM/PGSIZE && i <= EXTPHYSMEM/PGSIZE){
+			pages[i].pp_ref = 1;
+			pages[i].pp_link = NULL;
+		}
+	//  4) Then extended memory
+		else if(i >= EXTPHYSMEM/PGSIZE && i<= (（int)boot_alloc(0) - KERNBASE)/PGSIZE{
+			pages[i].pp_ref = 1;
+			pages[i].pp_link = NULL;
+		}
+		else{
+			pages[i].pp_ref = 0;
+			pages[i].pp_link = page_free_list;
+			page_free_list = &pages[i];
+		}
 	}
 }
 
@@ -272,6 +294,23 @@ struct PageInfo *
 page_alloc(int alloc_flags)
 {
 	// Fill this function in
+
+	// size_t i;
+	// while(pages[i].pp_ref){
+	// 	i++;
+	// } 
+	// page_free_list = &(pages[i].pp_link);
+	// pages[i].pp_link = NULL;
+	// return pages[i];
+	
+	if(page_free_list == NULL)
+		return NULL;
+	else{
+		
+	}
+	if(alloc_flags & ALLOC_ZERO){
+
+	}
 	return 0;
 }
 
