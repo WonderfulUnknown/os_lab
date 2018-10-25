@@ -90,6 +90,8 @@ KADDR：将物理地址转换为虚拟地址
 page2kva：将PageInfo结构转换为相应的虚拟地址
 ##page_free
 对申请的空间进行释放，同时对page_free_list和收回的page进行修改
+
+***原本加了个pp->ref是否等于0的判断，发现结果一直出乎意外，后来查了才知道好像前面的代码在调用page_free的时候会提前把pp_ref和pp_link修改了***
 ##check_page_alloc
 检查page_alloc是否成功，成功则
 `cprintf("check_page_alloc() succeeded!\n");`
