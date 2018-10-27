@@ -298,17 +298,7 @@ struct PageInfo *
 page_alloc(int alloc_flags)
 {
 	// Fill this function in
-
-	// size_t i;
-	// while(pages[i].pp_ref){
-	// 	i++;
-	// } 
-	// page_free_list = &(pages[i].pp_link);
-	// pages[i].pp_link = NULL;
-	// return pages[i];
-	//size_t addr;
 	//cprintf("page_alloc\r\n");
-
 	if(page_free_list == NULL)
 		return NULL;
 	else{
@@ -320,7 +310,8 @@ page_alloc(int alloc_flags)
 		page_free_list = page_free_list->pp_link;
 		//page_free_list->pp_link = NULL;
 		Page->pp_link = NULL;
-		Page->pp_ref = 1;
+		//Page->pp_ref = 1;
+		Page->pp_ref = 0;
 		cprintf("page_alloc\r\n");
 		if(alloc_flags & ALLOC_ZERO)
 			memset(page2kva(Page),'\0',PGSIZE);
@@ -340,16 +331,14 @@ page_free(struct PageInfo *pp)
 	// Hint: You may want to panic if pp->pp_ref is nonzero or
 	// pp->pp_link is not NULL.
 
-	//if(!pp->pp_ref){
 	// if(pp->pp_link != 0  || pp->pp_ref != 0){
-	// 	panic("can't free the page");
-	// 	return;
+	// if(!pp->pp_ref){
+	//  	panic("can't free the page");
+	//  	return;
 	// }
 	//	cprinf("can't free the page");
 	//pp->pp_link = page_free_list->pp_link;	
 	pp->pp_link = page_free_list;
-	//page_free_list->pp_link = pp;
-	// page_free_list = &pp;
 	page_free_list = pp;
 	//pp->pp_ref = 0;
 	cprintf("page_free\r\n");
@@ -392,7 +381,41 @@ pte_t *
 pgdir_walk(pde_t *pgdir, const void *va, int create)
 {
 	// Fill this function in
-	return NULL;
+	uint32_t pd_number,pt_number,pt_addr;//,page_number,page_addr;
+	uint32_t *pte;
+	struct PageInfo *Page;
+	pd_number = PDX(va);
+	//if(pgdir[pd_number] == NULL && create == false)
+	//	return NULL;
+	pte = KADDR(PTE_ADDR(pgdir[pd_number]));
+	//存在对应的page_table，返回page_table的虚拟地址
+	if(pte){
+		pt_number = PTX(va);
+		pt_addr = KADDR(pte[pt_number]);
+		return pt_addr;
+	}
+	//不存在对应的page_table，page_alloc创建一个，返回page_table的虚拟地址
+	else{
+		if(!create)
+			return NULL;
+		Page = page_alloc(create);
+		pt_addr = page2pa(Page);
+		pgdir[pt_number] = pt_addr << 12;//给页目录中写入页表的地址
+		return pt_addr;
+	}
+	// //page_table中对应的页存在，返回页的物理地址
+	// if(pte[pt_addr]){
+	// 	page_number = KADDR(PTE_ADDR(pte[pt_addr]));
+	// 	page_addr = (page_number >> 12) + (PGOFF(va));
+	// //	return page_addr;
+	// }	
+	// //page_table中对应的页不存在，page_alloc创建一个
+	// else{
+	// //不确定page_alloc函数里应该填入的参数,page_alloc(int alloc_flags)
+	// 	Page = page_alloc(create);
+	// 	page_addr = page2pa(Page);
+	// }
+	// return page_addr;
 }
 
 //
