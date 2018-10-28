@@ -382,27 +382,40 @@ pgdir_walk(pde_t *pgdir, const void *va, int create)
 {
 	// Fill this function in
 	uint32_t pd_number,pt_number,pt_addr;//,page_number,page_addr;
-	uint32_t *pte;
+	pte_t *pte = NULL;
 	struct PageInfo *Page;
 	pd_number = PDX(va);
-	//if(pgdir[pd_number] == NULL && create == false)
-	//	return NULL;
-	pte = KADDR(PTE_ADDR(pgdir[pd_number]));
-	//存在对应的page_table，返回page_table的虚拟地址
-	if(pte){
-		pt_number = PTX(va);
-		pt_addr = KADDR(pte[pt_number]);
-		return pt_addr;
-	}
-	//不存在对应的page_table，page_alloc创建一个，返回page_table的虚拟地址
-	else{
+	pt_number = PTX(va);
+	if(pgdir[pd_number] & PTE_P)
+		pte = KADDR(PTE_ADDR(pgdir[pd_number]));
+	if(!pte){
 		if(!create)
+	 		return NULL;
+	 	Page = page_alloc(create);
+		if(!Page)
 			return NULL;
-		Page = page_alloc(create);
-		pt_addr = page2pa(Page);
-		pgdir[pt_number] = pt_addr << 12;//给页目录中写入页表的地址
-		return pt_addr;
+		Page->pp_ref ++;
+	 	pte = KADDR(page2pa(Page));		
+		// pgdir[pd_number] = page2pa(Page);
+		pgdir[pd_number] = page2pa(Page) | PTE_P | PTE_W | PTE_U;
 	}
+	return &(pte[pt_number]);
+	//存在对应的page_table，返回page_table的虚拟地址
+	// if(pte){
+	// 	pt_number = PTX(va);
+	// 	pt_addr = KADDR(pte[pt_number]);
+	// 	return pt_addr;
+	// }
+	// //不存在对应的page_table，page_alloc创建一个，返回page_table的虚拟地址
+	// else{
+	// 	if(!create)
+	// 		return NULL;
+	// 	Page = page_alloc(create);
+	// 	pt_addr = page2pa(Page);
+	// 	//给页目录中写入页表的地址，给12位flag赋值
+	// 	//pgdir[pt_number] = pt_addr << 12 + 0x002;
+	// 	return pt_addr;
+	// }
 	// //page_table中对应的页存在，返回页的物理地址
 	// if(pte[pt_addr]){
 	// 	page_number = KADDR(PTE_ADDR(pte[pt_addr]));
@@ -433,6 +446,13 @@ static void
 boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm)
 {
 	// Fill this function in
+	pte_t *pte;
+	for(int i = 0;i < size;i++){
+		pte = pgdir_walk(pgdir, (void *)va, 1);
+		*pte = (pa | perm | PTE_P);
+		va += PGSIZE;
+		pa += PGSIZE;
+	}
 }
 
 //
@@ -464,7 +484,37 @@ int
 page_insert(pde_t *pgdir, struct PageInfo *pp, void *va, int perm)
 {
 	// Fill this function in
+	pte_t *pte;
+	pte = pgdir_walk(pgdir, va, 1); //查找对应的页表项，没有就创建
+	if(!pte)
+		return -E_NO_MEM;
+	pp->pp_ref++;
+	//删除之前存在的映射关系 
+    if((*pte) & PTE_P)
+        page_remove(pgdir, va);
+	// pp ->pp_ref++;
+    *pte = page2pa(pp) | perm | PTE_P;
 	return 0;
+
+	// pte_t *pte;
+	// pte = pgdir_walk(pgdir, va, 1); //查找对应的页表项，没有就创建
+	// if(!pte)
+	// 	return -E_NO_MEM;
+	//页表项已经存在，即该虚拟地址已经映射到物理页了 
+	// if(*pte & PTE_P) { 
+	// 	if(page2pa(pp) == PTE_ADDR(*pte)) { 
+	// 		//映射到之前的页，更改权限 
+	// 		*pte = page2pa(pp) | perm | PTE_P;
+	// 		return 0; 
+	// 	}
+	//  //删除旧映射关系 
+	// 	else { 
+	// 		page_remove(pgdir, va); 
+	// 	}
+	// }
+	// pp->pp_ref++;
+    // *pte = page2pa(pp) | perm | PTE_P;
+	// return 0;
 }
 
 //
@@ -482,7 +532,13 @@ struct PageInfo *
 page_lookup(pde_t *pgdir, void *va, pte_t **pte_store)
 {
 	// Fill this function in
-	return NULL;
+	pte_t *pte;
+	pte = pgdir_walk(pgdir, (void *)va, 0);//只查询,create=0
+	if(!pte)
+		return NULL;
+	if(pte_store)
+		*pte_store = pte;
+	return pa2page(PTE_ADDR(*pte));
 }
 
 //
@@ -504,6 +560,19 @@ void
 page_remove(pde_t *pgdir, void *va)
 {
 	// Fill this function in
+	pte_t *pte;
+	// pte_t *pte,**pte_store;
+	// pte = pgdir_walk(pgdir, (void *)va, 0);
+	// pte_store = &pte;
+	struct PageInfo *Page;
+	Page = page_lookup(pgdir, va, &pte);
+	// Page = page_lookup(pgdir, va, pte_store);
+	if(Page){
+		// Page->pp_ref --;
+		tlb_invalidate(pgdir, va);
+		page_decref(Page);
+		*pte = 0;//将对应的页表项清空
+	}
 }
 
 //

@@ -120,10 +120,8 @@ qemu-system-i386 -hda obj/kern/kernel.img -monitor stdio -gdb tcp::26000 -D qemu
 虚拟地址，因为使用了指针，指针指向的都是虚拟地址。
 #练习4
 ##page_walk
-返回传入的虚拟地址va所在的页首地址。
-通过虚拟地址，获取其页目录位置，取得此地址的值（页表物理地址），将其转换为页表首地址（KADDR），再从页表中找到所需要的页表项
-
-这个函数的主要作用是给定一个虚拟地址va和pgdir(page director table 的首地址), 返回va所对应的pte(page table entry)。当va对应的二级页表存在时，只需要直接按照页面翻译的过程给出PTE的地址就可以了。但是，当va对应的二级页表还没有被创建的时候，就需要手动的申请页面，并且创建页面了。过程比较简单，但是在最后返回PTE的地址的时候，需要返回PTE地址对应的虚拟地址，而不能直接把pte的物理地址给出。因为程序里面只能执行虚拟地址，给出的物理地址也会被当成是虚拟地址，一般会引发段错误。
+主要是用过一个给定的虚拟地址va和pgdir(page director table的首地址), 返回va所对应的pte(page table entry)中的页表项。当va对应的页表存在时，只需要直接按照页面翻译的过程给出页表项的地址；当va对应的页表没有被创建的时候，就需要手动的申请并创建页面。
+最后需要返回的是虚拟地址，而不能直接返回页表项的物理地址。因为程序里面只能执行虚拟地址，给出的物理地址也会被当成是虚拟地址，会引发错误。
 ###pte_t,pde_t
 memlayout.h中定义
 ```
@@ -155,3 +153,53 @@ typedef uint32_t pde_t;
 // offset in page
 #define PGOFF(la)	(((uintptr_t) (la)) & 0xFFF)
 ```
+####页目录和页表权限位
+```
+// Page table/directory entry flags.
+#define PTE_P		0x001	// Present 存在
+#define PTE_W		0x002	// Writeable 可写入
+#define PTE_U		0x004	// User 用户可操作
+```
+##boot_map
+>UTOP？
+
+调用pgdir_walk，把虚拟地址和物理地址的映射放到页的首地址对应的页目录中,并设置权限等信息
+##page_lookup
+根据虚拟地址，找到相应的page(pageInfo)的位置
+###pa2page
+将虚拟地址转换为对应的PageInfo结构
+##page_remove
+虚拟地址va和物理页的映射关系删除
+###tlb_invalidate
+通知tlb失效。tlb是个高速缓存，用来缓存查找记录增加查找速度
+```
+// Invalidate a TLB entry, but only if the page tables being
+// edited are the ones currently in use by the processor.
+//
+void
+tlb_invalidate(pde_t *pgdir, void *va)
+{
+	// Flush the entry only if we're modifying the current address space.
+	// For now, there is only one address space, so always invalidate.
+	invlpg(va);
+}
+```
+具体解释在这个博客里有提到
+[https://blog.csdn.net/cinmyheart/article/details/39994769](https://blog.csdn.net/cinmyheart/article/details/39994769)
+###page_decref
+减少页的被引用次数，如果页的被引用次数为0就调用page_free将页面释放
+```
+// Decrement the reference count on a page,
+// freeing it if there are no more refs.
+//
+void
+page_decref(struct PageInfo* pp)
+{
+	if (--pp->pp_ref == 0)
+		page_free(pp);
+}
+```
+##page_insert
+把指定的物理地址和虚拟地址之间的联系放到页的首地址（如果虚拟地 址已经有映射，删除之前的映射，添加新的）
+
+>对于权限位有点不太理解，不太懂为什么不是一个bit对应一种权限
