@@ -489,10 +489,10 @@ page_insert(pde_t *pgdir, struct PageInfo *pp, void *va, int perm)
 	if(!pte)
 		return -E_NO_MEM;
 	pp->pp_ref++;
-	//删除之前存在的映射关系 
+	//删除旧映射关系 
     if((*pte) & PTE_P)
         page_remove(pgdir, va);
-	// pp ->pp_ref++;
+	//pp ->pp_ref++;
     *pte = page2pa(pp) | perm | PTE_P;
 	return 0;
 
@@ -500,19 +500,20 @@ page_insert(pde_t *pgdir, struct PageInfo *pp, void *va, int perm)
 	// pte = pgdir_walk(pgdir, va, 1); //查找对应的页表项，没有就创建
 	// if(!pte)
 	// 	return -E_NO_MEM;
-	//页表项已经存在，即该虚拟地址已经映射到物理页了 
+	// pp->pp_ref++;
+	// //页表项已经存在，即该虚拟地址已经映射到物理页了 
 	// if(*pte & PTE_P) { 
 	// 	if(page2pa(pp) == PTE_ADDR(*pte)) { 
 	// 		//映射到之前的页，更改权限 
+	// 		pp->pp_ref--;
 	// 		*pte = page2pa(pp) | perm | PTE_P;
 	// 		return 0; 
 	// 	}
 	//  //删除旧映射关系 
-	// 	else { 
+	// 	else
 	// 		page_remove(pgdir, va); 
-	// 	}
 	// }
-	// pp->pp_ref++;
+	// //pp->pp_ref++;
     // *pte = page2pa(pp) | perm | PTE_P;
 	// return 0;
 }

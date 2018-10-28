@@ -160,6 +160,9 @@ typedef uint32_t pde_t;
 #define PTE_W		0x002	// Writeable 可写入
 #define PTE_U		0x004	// User 用户可操作
 ```
+>关于权限位如果有不懂的地方看下图
+
+![权限位图](https://pdos.csail.mit.edu/6.828/2014/readings/i386/fig6-10.gif)
 ##boot_map
 >UTOP？
 
@@ -201,5 +204,3 @@ page_decref(struct PageInfo* pp)
 ```
 ##page_insert
 把指定的物理地址和虚拟地址之间的联系放到页的首地址（如果虚拟地 址已经有映射，删除之前的映射，添加新的）
-
->对于权限位有点不太理解，不太懂为什么不是一个bit对应一种权限
