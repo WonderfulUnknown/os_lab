@@ -1,5 +1,5 @@
-[TOB]
-#练习1代码理解
+[TOC]
+#练习1
 ##i386_detect_memory
 识别内存中有多少空间剩余以及base memory,extended memory
 >不太理解哪来的额外内存
@@ -106,7 +106,8 @@ void _panic(const char*, int, const char*, ...) __attribute__((noreturn));
 
 #define panic(...) _panic(__FILE__, __LINE__, __VA_ARGS__)
 ```
-#练习2Intel理解
+#练习2
+**Intel理解**
 对于Intel CPU 来说，分页标志位是CR0寄存器的第31位，为1 表示使用分页，为0 表示不使用分页。CPU 在执行代码时，自动检测CR0寄存器中的分页标志位是否被设定，若被设定就自动完成虚拟地址到物理地址的转换。
 
 #练习3
@@ -115,9 +116,6 @@ void _panic(const char*, int, const char*, ...) __attribute__((noreturn));
 qemu-system-i386 -hda obj/kern/kernel.img -monitor stdio -gdb tcp::26000 -D qemu.log  
 ```
 可以在linux的terminal里进入到监控器。
->变量x应该是什么类型，uintptr_t还是 physaddr_t？
-
-虚拟地址，因为使用了指针，指针指向的都是虚拟地址。
 #练习4
 ##page_walk
 主要是用过一个给定的虚拟地址va和pgdir(page director table的首地址), 返回va所对应的pte(page table entry)中的页表项。当va对应的页表存在时，只需要直接按照页面翻译的过程给出页表项的地址；当va对应的页表没有被创建的时候，就需要手动的申请并创建页面。
@@ -164,7 +162,8 @@ typedef uint32_t pde_t;
 
 ![权限位图](https://pdos.csail.mit.edu/6.828/2014/readings/i386/fig6-10.gif)
 ##boot_map
->UTOP？
+>UTOP memlayout.h中定义
+`UTOP,UENVS ------>  +------------------------------+ 0xeec00000`
 
 调用pgdir_walk，把虚拟地址和物理地址的映射放到页的首地址对应的页目录中,并设置权限等信息
 ##page_lookup
@@ -204,3 +203,51 @@ page_decref(struct PageInfo* pp)
 ```
 ##page_insert
 把指定的物理地址和虚拟地址之间的联系放到页的首地址（如果虚拟地 址已经有映射，删除之前的映射，添加新的）
+#练习5
+##mem_init
+>不太懂bootstack在哪被赋值，也就pamp.h中有提到
+`extern char bootstacktop[], bootstack[];`
+###PTSIZE
+mmu.h中定义
+`#define PTSIZE		(PGSIZE*NPTENTRIES) // bytes mapped by a page directory entry`
+PTSIZE 被定义为页目录项映射的bytes，一个页目录中有1024个页表项，每个页表项可映射一个物理页，每个物理页为4K，故PTSIZE为 4MB。
+###PADDR
+将虚拟地址转化为对应的物理地址
+```
+/* This macro takes a kernel virtual address -- an address that points above
+ * KERNBASE, where the machine's maximum 256MB of physical memory is mapped --
+ * and returns the corresponding physical address.  It panics if you pass it a
+ * non-kernel virtual address.
+ */
+#define PADDR(kva) _paddr(__FILE__, __LINE__, kva)
+```
+#问题
+##1
+>变量x应该是什么类型，uintptr_t还是 physaddr_t？
+
+虚拟地址，因为使用了指针，指针指向的都是虚拟地址。
+##2
+##3
+>为什么用户的程序不能读取内核的内存？有什么具体的机制保护内核空间吗？
+
+只有分页机制，没有分段机制。通过对页表项的后12bit进行权限设置来限制对实际物理地址的操作。
+把内核存储的地方权限设置为PTE_W | PTE_P，也就是把下图中寄存器的最后两位设置为1，把U/S位置为0
+![权限位图](https://pdos.csail.mit.edu/6.828/2014/readings/i386/fig6-10.gif)
+参考Intel i386手册
+>The concept of privilege for pages is implemented by assigning each page to one of two levels:
+
+    Supervisor level (U/S=0) -- for the operating system and other systems software and related data.
+    User level (U/S=1) -- for applications procedures and data. 
+
+##4
+>JOS操作系统可以支持的最大物理内存是多少？为什么？
+
+通过前面练习1在mem_init中补全的代码可以知道，PageInfo结构存在pages数组中。练习5中给pages数组分配了PTSIZE，即4MB大小的空间。一个PageInfo结构有两个uint32_t类型的指针（pp_ref,pp_link）占8个字节，也就是最多存储512*1024个PageInfo类型的结构。一个PageInfo对应一个4K的物理页，因此JOS可以支持的最大物理内存是512*1024*4k=2GB。
+##5
+>如果我们的硬件配置了可以支持的最大的物理内存，那么管理内存空间的开销是多少？如何减少这种开销?
+
+如果支持最大的物理内存，需要4MB空间存放所有的PageInfo，以及4KB的page_dir和1024个4KB的page_table，共需要8196KB。
+可以通过扩大页的容量，使得相同的存储开销存储的页能够映射更多的物理地址空间来减少内存开销。
+##6
+>在什么时刻我们才开始在KERNBASE上运行EIP。当我们启动分页，当我们开始在KERNBASE上运行EIP之时，我们能否以低地址的EIP继续执行？这个过渡为什么是必须要的？
+
