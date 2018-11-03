@@ -2,7 +2,7 @@
 *** Now run 'make gdb'.
 ***
 
-(process:13063): GLib-WARNING **: /build/glib2.0-7ZsPUq/glib2.0-2.48.2/./glib/gmem.c:483: custom memory allocation vtable not supported
+(process:18111): GLib-WARNING **: /build/glib2.0-7ZsPUq/glib2.0-2.48.2/./glib/gmem.c:483: custom memory allocation vtable not supported
 6828 decimal is 15254 octal!
 Physical memory: 66556K available, base = 640K, extended = 65532K
 page_alloc
@@ -115,4 +115,4 @@ page_free
 check_page_installed_pgdir() succeeded!
 Welcome to the JOS kernel monitor!
 Type 'help' for a list of commands.
-qemu: terminating on signal 15 from pid 13033
+qemu: terminating on signal 15 from pid 18080
