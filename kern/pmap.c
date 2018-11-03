@@ -184,7 +184,7 @@ mem_init(void)
 	//       overwrite memory.  Known as a "guard page".
 	//     Permissions: kernel RW, user NONE
 	// Your code goes here:
-	boot_map_region(kern_pgdir, KSTACKTOP-KSTACKTOP, KSTACKTOP, PADDR(bootstack), PTE_W);
+	boot_map_region(kern_pgdir, KSTACKTOP-KSTKSIZE, KSTKSIZE, PADDR(bootstack), PTE_W);
 	//////////////////////////////////////////////////////////////////////
 	// Map all of physical memory at KERNBASE.
 	// Ie.  the VA range [KERNBASE, 2^32) should map to
@@ -446,8 +446,8 @@ static void
 boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm)
 {
 	// Fill this function in
-	pte_t *pte;
-	for(int i = 0;i < size;i++){
+	pte_t *pte = NULL;
+	for(int i = 0;i < size;i += PGSIZE){
 		pte = pgdir_walk(pgdir, (void *)va, 1);
 		*pte = (pa | perm | PTE_P);
 		va += PGSIZE;
