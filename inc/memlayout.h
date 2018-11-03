@@ -143,6 +143,7 @@
 typedef uint32_t pte_t;
 typedef uint32_t pde_t;
 
+<<<<<<< HEAD
 #if JOS_USER
 /*
  * The page directory entry corresponding to the virtual address range
@@ -184,5 +185,7 @@ struct PageInfo {
 	uint16_t pp_ref;
 };
 
+=======
+>>>>>>> 70a64807815844a1c7d36ced91e4379b6da55cb1
 #endif /* !__ASSEMBLER__ */
 #endif /* !JOS_INC_MEMLAYOUT_H */
