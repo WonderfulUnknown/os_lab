@@ -117,7 +117,7 @@ qemu-system-i386 -hda obj/kern/kernel.img -monitor stdio -gdb tcp::26000 -D qemu
 ```
 可以在linux的terminal里进入到监控器。
 #练习4
-##page_walk
+##padir_walk
 主要是用过一个给定的虚拟地址va和pgdir(page director table的首地址), 返回va所对应的pte(page table entry)中的页表项。当va对应的页表存在时，只需要直接按照页面翻译的过程给出页表项的地址；当va对应的页表没有被创建的时候，就需要手动的申请并创建页面。
 最后需要返回的是虚拟地址，而不能直接返回页表项的物理地址。因为程序里面只能执行虚拟地址，给出的物理地址也会被当成是虚拟地址，会引发错误。
 ###pte_t,pde_t
@@ -250,7 +250,7 @@ PTSIZE 被定义为页目录项映射的bytes，一个页目录中有1024个页�
 ##4
 >JOS操作系统可以支持的最大物理内存是多少？为什么？
 
-通过前面练习1在mem_init中补全的代码可以知道，PageInfo结构存在pages数组中。练习5中给pages数组分配了PTSIZE，即4MB大小的空间。一个PageInfo结构有两个uint32_t类型的指针（pp_ref,pp_link）占8个字节，也就是最多存储512*1024个PageInfo类型的结构。一个PageInfo对应一个4K的物理页，因此JOS可以支持的最大物理内存是512*1024*4k=2GB。
+通过前面练习1在mem_init中补全的代码可以知道，PageInfo结构存在pages数组中。练习5中给pages数组分配了PTSIZE，即4MB大小的空间。一个PageInfo结构有两个uint32_t类型的指针（pp_ref,pp_link）占8个字节，也就是最多存储512\*1024个PageInfo类型的结构。一个PageInfo对应一个4K的物理页，因此JOS可以支持的最大物理内存是512\*1024\*4k=2GB。
 ##5
 >如果我们的硬件配置了可以支持的最大的物理内存，那么管理内存空间的开销是多少？如何减少这种开销?
 
