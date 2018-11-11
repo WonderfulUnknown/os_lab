@@ -161,7 +161,7 @@ typedef uint32_t pde_t;
 >关于权限位如果有不懂的地方看下图
 
 ![权限位图](https://pdos.csail.mit.edu/6.828/2014/readings/i386/fig6-10.gif)
-##boot_map
+##boot_map_region
 >UTOP memlayout.h中定义
 `UTOP,UENVS ------>  +------------------------------+ 0xeec00000`
 
@@ -202,7 +202,7 @@ page_decref(struct PageInfo* pp)
 }
 ```
 ##page_insert
-把指定的物理地址和虚拟地址之间的联系放到页的首地址（如果虚拟地 址已经有映射，删除之前的映射，添加新的）
+把指定的物理地址和虚拟地址之间的联系放到页的首地址（如果虚拟地址已经有映射，删除之前的映射，添加新的）
 #练习5
 ##mem_init
 >不太懂bootstack在哪被赋值，也就pamp.h中有提到
