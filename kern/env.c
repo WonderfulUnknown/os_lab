@@ -59,6 +59,7 @@ struct Pseudodesc gdt_pd = {
 	sizeof(gdt) - 1, (unsigned long) gdt
 };
 
+
 //
 // Converts an envid to an env pointer.
 // If checkperm is set, the specified environment must be either the
@@ -279,9 +280,11 @@ region_alloc(struct Env *e, void *va, size_t len)
 	//   You should round va down, and round (va + len) up.
 	//   (Watch out for corner-cases!)
 	//boot_map_region(e->env_pgdir, va, len, PADDR(envs), PTE_P | PTE_U | PTE_W);
-	int start,end;
+	uint32_t start,end;
 	start = ROUNDDOWN((uint32_t *)va, PGSIZE);
 	end = ROUNDUP((uint32_t *)(va + len), PGSIZE);
+	printf("start=%d \n",start);
+	printf("end=%d \n",end);
 
 	struct PageInfo *Page;
 	int flag = 1;
@@ -350,11 +353,45 @@ load_icode(struct Env *e, uint8_t *binary)
 	//  What?  (See env_run() and env_pop_tf() below.)
 
 	// LAB 3: Your code here.
+	struct Proghdr *ph, *eph;
+	struct Elf *elf;
+	// 强制类型转换，将binary后的内存空间内容按照结构ELF的格式读取
+	elf = (struct ELF *)binary;
+	// is this a valid ELF?
+	// ELF头开头的结构体叫做魔数,是一个16位的数组
+	if(ph->p_type != ELF_MAGIC)
+		panic("load segements fail");
+	// load each program segment (ignores ph flags)
+	// e_phoff 程序头表的文件偏移地址
+	ph = (struct Proghdr *) ((uint8_t *) elf + elf->e_phoff);
+	eph = ph + elf->e_phnum;
+	// 因为后面需要访问刚分配的内存，所以需要将env_pgdir装入cr3，使二级页表能够运作
+	lcr3(PADDR(e->env_pgdir));
+
+	for (; ph < eph; ph++)
+	{
+		// 	(The ELF header should have ph->p_filesz <= ph->p_memsz.)
+		if(ph->p_filesz > ph->p_memsz)
+			panic("memory is not enough for file");
+		if(ph->p_type == ELF_PROG_LOAD)
+		{
+		//  Each segment's virtual address can be found in ph->p_va
+		//  and its size in memory can be found in ph->p_memsz.
+			region_alloc(e, ph->p_va, ph->p_memsz);
+		//  The ph->p_filesz bytes from the ELF binary, starting at
+		//  'binary + ph->p_offset', should be copied to virtual address
+		//  ph->p_va. 
+			memcpy((void *)ph->p_va, binary + ph->p_offset, ph->p_filesz);
+        //	Any remaining memory bytes should be cleared to zero.
+		    memset((void *)ph->p_va + ph->p_filesz, 0, ph->p_memsz - ph->p_filesz);
+		}
+	}
 
 	// Now map one page for the program's initial stack
 	// at virtual address USTACKTOP - PGSIZE.
 
 	// LAB 3: Your code here.
+	region_alloc(e, (void *) USTACKTOP-PGSIZE, PGSIZE);
 }
 
 //
