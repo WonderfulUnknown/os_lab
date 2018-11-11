@@ -263,7 +263,6 @@ PTSIZE 被定义为页目录项映射的bytes，一个页目录中有1024个页�
 #补充
 ##内存布局
 ![](https://upload-images.jianshu.io/upload_images/286774-f1f5cf21e3847131.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1000)
-
 ##映射关系
 ![](https://img-blog.csdn.net/20160521183830378)
 
