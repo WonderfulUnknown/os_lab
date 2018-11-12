@@ -189,8 +189,9 @@ env_setup_vm(struct Env *e)
 
 	// LAB 3: Your code here.
 	// p = page_alloc(ALLOC_ZERO);
-	e->env_pgdir = p;
-	memcpy(e->env_pgdir, kern_pgdir, PGSIZE);
+	e->env_pgdir = page2kva(p);
+	//memcpy(e->env_pgdir, kern_pgdir, PGSIZE);
+	memmove(e->env_pgdir, kern_pgdir, PGSIZE);
 	p->pp_ref++;
 	// UVPT maps the env's own page table read-only.
 	// Permissions: kernel R, user R
@@ -281,21 +282,22 @@ region_alloc(struct Env *e, void *va, size_t len)
 	//   (Watch out for corner-cases!)
 	//boot_map_region(e->env_pgdir, va, len, PADDR(envs), PTE_P | PTE_U | PTE_W);
 	uint32_t start,end;
-	start = ROUNDDOWN((uint32_t *)va, PGSIZE);
-	end = ROUNDUP((uint32_t *)(va + len), PGSIZE);
-	printf("start=%d \n",start);
-	printf("end=%d \n",end);
+	start = ROUNDDOWN((uint32_t)va, PGSIZE);
+	end = ROUNDUP((uint32_t)(va + len), PGSIZE);
+	cprintf("start=%d \n",start);
+	cprintf("end=%d \n",end);
 
 	struct PageInfo *Page;
-	int flag = 1;
+	int r;
 	for(int i = start;i < end;i += PGSIZE)
 	{
 		Page = page_alloc(0);
 		if(!Page)
 			panic("page_alloc fail");
-		flag = page_insert(e->env_pgdir, Page, va, PTE_P | PTE_U | PTE_W);
-		if(flag != 0)
-			panic("region_alloc fail");
+		r = page_insert(e->env_pgdir, Page, va, PTE_P | PTE_U | PTE_W);
+		if(r != 0)
+			panic("region_alloc: %e", r);
+			//panic("region_alloc fail");
 	}
 }
 
@@ -356,10 +358,10 @@ load_icode(struct Env *e, uint8_t *binary)
 	struct Proghdr *ph, *eph;
 	struct Elf *elf;
 	// 强制类型转换，将binary后的内存空间内容按照结构ELF的格式读取
-	elf = (struct ELF *)binary;
+	elf = (struct Elf *)binary;
 	// is this a valid ELF?
 	// ELF头开头的结构体叫做魔数,是一个16位的数组
-	if(ph->p_type != ELF_MAGIC)
+	if(elf->e_magic != ELF_MAGIC)
 		panic("load segements fail");
 	// load each program segment (ignores ph flags)
 	// e_phoff 程序头表的文件偏移地址
@@ -377,16 +379,18 @@ load_icode(struct Env *e, uint8_t *binary)
 		{
 		//  Each segment's virtual address can be found in ph->p_va
 		//  and its size in memory can be found in ph->p_memsz.
-			region_alloc(e, ph->p_va, ph->p_memsz);
+			region_alloc(e, (void *)ph->p_va, ph->p_memsz);
 		//  The ph->p_filesz bytes from the ELF binary, starting at
 		//  'binary + ph->p_offset', should be copied to virtual address
 		//  ph->p_va. 
-			memcpy((void *)ph->p_va, binary + ph->p_offset, ph->p_filesz);
+			//memcpy((void *)ph->p_va, binary + ph->p_offset, ph->p_filesz);
+			memmove((void *)ph->p_va, binary + ph->p_offset, ph->p_filesz);
         //	Any remaining memory bytes should be cleared to zero.
 		    memset((void *)ph->p_va + ph->p_filesz, 0, ph->p_memsz - ph->p_filesz);
 		}
 	}
-
+	e->env_tf.tf_eip = elf->e_entry;
+	lcr3(PADDR(kern_pgdir));
 	// Now map one page for the program's initial stack
 	// at virtual address USTACKTOP - PGSIZE.
 
@@ -405,6 +409,15 @@ void
 env_create(uint8_t *binary, enum EnvType type)
 {
 	// LAB 3: Your code here.
+	struct Env *e;
+	int r;
+	r = env_alloc(&e, 0);
+	if(r != 0)
+		panic("env_create: %e", r);
+	//if(env_alloc(&e,0) != 0)
+	//	panic("env_alloc fail");
+	e->env_type = type;
+	load_icode(e, binary);
 }
 
 //
@@ -520,7 +533,14 @@ env_run(struct Env *e)
 	//	e->env_tf to sensible values.
 
 	// LAB 3: Your code here.
+	if(curenv && curenv->env_status == ENV_RUNNING)
+		curenv->env_status = ENV_RUNNABLE;
+	curenv = e;
+	curenv->env_status = ENV_RUNNING;
+	curenv->env_runs++;
+	lcr3(PADDR(curenv->env_pgdir));
 
-	panic("env_run not yet implemented");
+	env_pop_tf(&e->env_tf);
+	//panic("env_run not yet implemented");
 }
 
