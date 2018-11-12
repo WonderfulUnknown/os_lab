@@ -6,6 +6,11 @@
 ##env_init
 初始化全部 envs 数组中的 Env 结构体，并将它们加入到 env_free_list 中。还要调用 env_init_percpu ，这个函数会通过配置段硬件，将其分隔为特权等级 0 (内核) 和特权等级 3（用户）两个不同的段。
 通过注释可以得知，第一次调用env_alloc()应该返回envs[0]，所以链表应该倒序存储。
+###envs
+env.h中定义
+```
+extern struct Env *envs;		// All environments
+```
 ##env_setup_vm
 >identical 相同的
 
@@ -31,7 +36,8 @@ memcpy函数的功能是从源src所指的内存地址的起始位置开始拷�
 为每一个用户进程设置它的初始代码区，堆栈以及处理器标识位。因为用户程序是ELF文件，所以要解析ELF文件。
 >函数只在内核初始化且第一个用户进程未运行时被调用，从ELF文件头部指明的虚拟地址开始加载需要加载的字段到用户内存
 
-该段代码需要参考boot/main.c文件来写
+该段代码需要参考boot/main.c文件来写。
+注释提示通过参考env_run和env_pop_tf，修改程序的入口，来确保进程正确开始执行。根据env_run的注释，需要回来修改代码给e->env_tf附上正确的值。
 ###Proghdr
 通过查询得知，p_type,p_va,p_memsz是结构Proghdr中的参数。
 elf.h中定义
@@ -83,6 +89,65 @@ Elf结构具体每个类型的意义可参考下图：
 [https://www.cnblogs.com/dengxiaojun/p/4279407.html](https://www.cnblogs.com/dengxiaojun/p/4279407.html)
 具体ELF文件格式可参考下面这篇博客：
 [https://blog.csdn.net/fang92/article/details/48092165](https://blog.csdn.net/fang92/article/details/48092165)
+###Trapframe
+trap.h中定义
+```
+struct Trapframe {
+	struct PushRegs tf_regs;
+	uint16_t tf_es;
+	uint16_t tf_padding1;
+	uint16_t tf_ds;
+	uint16_t tf_padding2;
+	uint32_t tf_trapno;
+	/* below here defined by x86 hardware */
+	uint32_t tf_err;
+	uintptr_t tf_eip;
+	uint16_t tf_cs;
+	uint16_t tf_padding3;
+	uint32_t tf_eflags;
+	/* below here only when crossing rings, such as from user to kernel */
+	uintptr_t tf_esp;
+	uint16_t tf_ss;
+	uint16_t tf_padding4;
+} __attribute__((packed));
+```
+##env_create
+调用env_alloc，从env_free_list中取出一个env结构体，再通过 env_setup_vm为其初始化，申请新的页目录; 然后执行load_icode,这个函数加载elf文件(二进制文件)，它会调用region_alloc为其分配页，并将虚拟地址和物理地址作出映射，load_icon之后分配进程栈，以及，将env->env_tf.tf_eip指向将执行进程函数的入口(等待env_pop_tf的调用)
+##env_run
+启动进程，curenv结构体指向当前运行的进程env,改变curenv结构体中运行状态等信息,通过env_pop_tf函数，将env结构体中保存的寄存器中的信息加在到真正的寄存器中。
+###curenv
+env.h中定义
+```
+extern struct Env *curenv;		// Current environment
+```
+###env_pop_tf
+使用'iret'指令复原Trapframe中的寄存器值，退出内核，开始运行一些进程的代码。
+ENV结构中提到Trapframe结构的寄存器
+`struct Trapframe env_tf; 	// 保存的寄存器`
+env.h中定义
+```
+void	env_pop_tf(struct Trapframe *tf) __attribute__((noreturn));
+```
+env.c中实现
+```
+// Restores the register values in the Trapframe with the 'iret' instruction.
+// This exits the kernel and starts executing some environment's code.
+//
+// This function does not return.
+//
+void
+env_pop_tf(struct Trapframe *tf)
+{
+	__asm __volatile("movl %0,%%esp\n"
+		"\tpopal\n"
+		"\tpopl %%es\n"
+		"\tpopl %%ds\n"
+		"\taddl $0x8,%%esp\n" /* skip tf_trapno and tf_errcode */
+		"\tiret"
+		: : "g" (tf) : "memory");
+	panic("iret failed");  /* mostly to placate the compiler */
+}
+```
 ###lcr3
 x86.h中定义
 ```
@@ -93,9 +158,35 @@ lcr3(uint32_t val)
 }
 ```
 汇编代码，将地址装入cr3寄存器，而cr3中装的都是页目录的起始地址。
+#some
+运行gdb的时候发现报了memmove错误
+![](/document/picture/error.png)
+然后按照错误提示去lib/string.c中查找memmove，发现自己原本写的memcpy在这里的string.c中竟然直接调用memmove= =
+```
+void *
+memmove(void *dst, const void *src, size_t n)
+{
+	const char *s;
+	char *d;
 
+	s = src;
+	d = dst;
+	if (s < d && s + n > d) {
+		s += n;
+		d += n;
+		while (n-- > 0)
+			*--d = *--s;
+	} else
+		while (n-- > 0)
+			*d++ = *s++;
 
-env_create：它会调用env_alloc，从env_free_list中取出一个env结构体，再通过 env_setup_vm为其初始化，申请新的页目录; 然后执行load_icode,这个函数加载elf文件(二进制文件)，它会调用region_alloc为其分配页，并将虚拟地址和物理地址作出映射，load_icon之后分配进程栈，以及，将env->env_tf.tf_eip指向将执行进程函数的入口(等待env_pop_tf的调用)
+	return dst;
+}
+#endif
 
-
-Env_run：启动进程，通过env_pop_tf函数，改变env结构体中运行状态等信息(防止后来的一个进程在多个内核中运行)，将env结构体中保存的寄存器中的信息加在到真正的寄存器中，接下来便执行eip所指向的内容。
+void *
+memcpy(void *dst, const void *src, size_t n)
+{
+	return memmove(dst, src, n);
+}
+```
