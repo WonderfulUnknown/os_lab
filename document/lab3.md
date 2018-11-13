@@ -158,10 +158,11 @@ lcr3(uint32_t val)
 }
 ```
 汇编代码，将地址装入cr3寄存器，而cr3中装的都是页目录的起始地址。
-#some
+#debug 
+##memmove error
 运行gdb的时候发现报了memmove错误
-![](/document/picture/error.png)
-然后按照错误提示去lib/string.c中查找memmove，发现自己原本写的memcpy在这里的string.c中竟然直接调用memmove= =
+![](/document/picture/1.png)
+然后按照错误提示去lib/string.c中查找memmove，发现自己原本写的memcpy在这里的string.c中竟然直接调用memmove,就顺手查了关于这两个函数的区别
 ```
 void *
 memmove(void *dst, const void *src, size_t n)
@@ -182,7 +183,6 @@ memmove(void *dst, const void *src, size_t n)
 
 	return dst;
 }
-#endif
 
 void *
 memcpy(void *dst, const void *src, size_t n)
@@ -190,3 +190,55 @@ memcpy(void *dst, const void *src, size_t n)
 	return memmove(dst, src, n);
 }
 ```
+具体这两个函数的区分可以参考下面的博客，解析的十分详细
+[https://blog.csdn.net/li_ning_/article/details/51418400](https://blog.csdn.net/li_ning_/article/details/51418400)
+
+发现报错的memmove是发生在调用汇编代码的memmove时
+```
+void *
+memmove(void *dst, const void *src, size_t n)
+{
+	const char *s;
+	char *d;
+
+	s = src;
+	d = dst;
+	if (s < d && s + n > d) {
+		s += n;
+		d += n;
+		if ((int)s%4 == 0 && (int)d%4 == 0 && n%4 == 0)
+			asm volatile("std; rep movsl\n"
+				:: "D" (d-4), "S" (s-4), "c" (n/4) : "cc", "memory");
+		else
+			asm volatile("std; rep movsb\n"
+				:: "D" (d-1), "S" (s-1), "c" (n) : "cc", "memory");
+		// Some versions of GCC rely on DF being clear
+		asm volatile("cld" ::: "cc");
+	} else {
+		if ((int)s%4 == 0 && (int)d%4 == 0 && n%4 == 0)
+			asm volatile("cld; rep movsl\n"
+				:: "D" (d), "S" (s), "c" (n/4) : "cc", "memory");
+		else
+			asm volatile("cld; rep movsb\n"
+				:: "D" (d), "S" (s), "c" (n) : "cc", "memory");
+	}
+	return dst;
+}
+```
+后面发现是前面region_alloc中对页表的分配出错了，导致后面内存异常。
+##PADDR called with invalid kva 00000000
+改完上面的错误，然后出现了如下图的错误
+![](/document/picture/2.png)
+找到半天panic出处最后发现是PADDR出问题了，看PADDR源码可知是因为转换的地址小于KERNBASE，也就是说不是在内核所映射的空间中。
+```
+#define PADDR(kva) _paddr(__FILE__, __LINE__, kva)
+
+static inline physaddr_t
+_paddr(const char *file, int line, void *kva)
+{
+	if ((uint32_t)kva < KERNBASE)
+		_panic(file, line, "PADDR called with invalid kva %08lx", kva);
+	return (physaddr_t)kva - KERNBASE;
+}
+```
+= =最后发现是env_init出错了。。

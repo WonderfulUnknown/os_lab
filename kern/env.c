@@ -118,8 +118,8 @@ env_init(void)
 	// Set up envs array
 	// LAB 3: Your code here.
 	// struct Env* envs;
-	env_free_list = NULL;
-	for(int i = NENV;i > 0;i--)
+	// env_free_list = NULL;
+	for(int i = NENV - 1;i >= 0;i--)
 	{
 		envs[i].env_id = 0;
 		envs[i].env_link = env_free_list;
@@ -294,7 +294,8 @@ region_alloc(struct Env *e, void *va, size_t len)
 		Page = page_alloc(0);
 		if(!Page)
 			panic("page_alloc fail");
-		r = page_insert(e->env_pgdir, Page, va, PTE_P | PTE_U | PTE_W);
+		//r = page_insert(e->env_pgdir, Page, va, PTE_P | PTE_U | PTE_W);
+		r = page_insert(e->env_pgdir, Page, (void *)i, PTE_U | PTE_W);
 		if(r != 0)
 			panic("region_alloc: %e", r);
 			//panic("region_alloc fail");
@@ -538,6 +539,7 @@ env_run(struct Env *e)
 	curenv = e;
 	curenv->env_status = ENV_RUNNING;
 	curenv->env_runs++;
+	cprintf("%o \n",(physaddr_t)curenv->env_pgdir);
 	lcr3(PADDR(curenv->env_pgdir));
 
 	env_pop_tf(&e->env_tf);
