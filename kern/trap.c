@@ -66,6 +66,26 @@ trap_init(void)
 
 	// LAB 3: Your code here.
 
+
+	void divide_error();
+	void debug_exception();
+	void non_maskable_interrupt();
+	void break_point();
+	void overflow();
+	void bounds_check();
+	void illegal_opcode();
+	void device_not_available();
+	void double_fault();
+
+	void invalid_task_switch_segment();
+	void segment_not_present();
+	void stack_exception();
+	void general_protection_fault();
+	void page_fault();
+	
+	void floating_point_error();
+
+	void system_call();
 	// Per-CPU setup 
 	trap_init_percpu();
 }
