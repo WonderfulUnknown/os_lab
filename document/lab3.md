@@ -87,6 +87,7 @@ Elf结构具体每个类型的意义可参考下图：
 ![](https://images2015.cnblogs.com/blog/745386/201606/745386-20160601195400680-1757764183.png)
 以及博客：
 [https://www.cnblogs.com/dengxiaojun/p/4279407.html](https://www.cnblogs.com/dengxiaojun/p/4279407.html)
+
 具体ELF文件格式可参考下面这篇博客：
 [https://blog.csdn.net/fang92/article/details/48092165](https://blog.csdn.net/fang92/article/details/48092165)
 ###Trapframe
@@ -242,3 +243,46 @@ _paddr(const char *file, int line, void *kva)
 }
 ```
 = =最后发现是env_init出错了。。
+#some
+start (kern/entry.S)	由实模式进入保护模式
+i386_init (kern/init.c) 	初始化内核
+cons_init();	初始化显示屏
+mem_init();		内存管理初始化
+env_init();		进程初始化
+trap_init();	中断初始化
+##gbd调试
+![](/document/picture/3.png)
+通过观察指令地址发现指令iret后进入了实模式
+![](/document/picture/4.png)
+在obj/user/hello.asm中查找int \$0x30的地址
+![](/document/picture/5.png)
+在int $0x30的地址0x800a1c处设置断点，成功运行到该代码处说明前面写的代码没有出错
+![](/document/picture/6.png)
+#练习4
+##trapentry.S中汇编代码
+.global/.globl:用来定义一个全局的符号
+使用.global/.globl将函数声明为全局函数以后就可以被其他文件调用。
+.type:用来指定一个符号的类型是函数类型或者是对象类型,对象类型一般是数据
+.align:用来指定内存对齐方式
+
+在CPU返回error code的时候调用TRAPHANDLER，没有则调用TRAPHANDLER_NOEC
+###first
+关于CPU何时返回error code，可参考Intel手册
+[https://pdos.csail.mit.edu/6.828/2014/readings/i386/s09_10.htm](https://pdos.csail.mit.edu/6.828/2014/readings/i386/s09_10.htm)
+
+>手册中没有说明是否返回error code的中断暂时没加上
+
+###second
+根据提示可知就是将Trapframe结构中的所有数据压入栈中，文档告诉我们tf_ss,tf_esp,tf_eflags,tf_cs,tf_eip,tf_err在中断发生时由CPU压栈，所以只需要将剩下的寄存器tf_es,tf_ds压入栈中即可。因为需要将栈模仿成Trapframe结构，而且CPU已经将其余寄存器的值倒序压入，所以需要注意先压入ds，后压入es。
+####pushal
+pushal指令会按顺序将eax到edi压入栈中,具体参考下面网站
+[http://www.fermimn.gov.it/linux/quarta/x86/pusha.htm](http://www.fermimn.gov.it/linux/quarta/x86/pusha.htm)
+####GD_KD
+memlayout.h中定义
+`#define GD_KD     0x10     // kernel data`
+这里需要注意不能直接用立即数给段寄存器赋值，至于为什么还是不太懂，可以参考下面的讨论
+[https://bbs.csdn.net/topics/340215235](https://bbs.csdn.net/topics/340215235)
+
+所以应该先给通用寄存器赋值，或者入栈出栈来实现赋值。
+##trap_init
+根据trapentery.S中的提示，声明函数
