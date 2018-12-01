@@ -1,9 +1,9 @@
 + ld obj/kern/kernel
 + mk obj/kern/kernel.img
 
-(process:3312): GLib-WARNING **: /build/glib2.0-7ZsPUq/glib2.0-2.48.2/./glib/gmem.c:483: custom memory allocation vtable not supported
+(process:25118): GLib-WARNING **: /build/glib2.0-7ZsPUq/glib2.0-2.48.2/./glib/gmem.c:483: custom memory allocation vtable not supported
 
-(process:3314): GLib-WARNING **: /build/glib2.0-7ZsPUq/glib2.0-2.48.2/./glib/gmem.c:483: custom memory allocation vtable not supported
+(process:25120): GLib-WARNING **: /build/glib2.0-7ZsPUq/glib2.0-2.48.2/./glib/gmem.c:483: custom memory allocation vtable not supported
 6828 decimal is 15254 octal!
 Physical memory: 66556K available, base = 640K, extended = 65532K
 page_alloc
@@ -172,4 +172,4 @@ page_free
 Destroyed the only environment - nothing more to do!
 Welcome to the JOS kernel monitor!
 Type 'help' for a list of commands.
-qemu: terminating on signal 15 from pid 3224
+qemu: terminating on signal 15 from pid 25043

@@ -389,3 +389,23 @@ def test_softint():
             '.00001000. free env 0000100')
 ```
 因为当前系统运行在用户态模式下，权限级别为3，而INT指令是系统指令，权限级别为0，因此会首先引发 Gerneral Protection Fault，根据前面可知define T_GPFLT 13。
+## 练习5
+### trap_dispatch
+根据trap number对不同的中断/异常进行处理分配
+### page_fault_handler
+trap.h中定义
+```
+void page_fault_handler(struct Trapframe *);
+```
+## 练习6
+make grade失败，发现
+` MISSING '  trap 0x00000003 Breakpoint'`
+回头把break_point的权限修改为3就解决了
+### monitor
+monitor.h中定义
+```
+// Activate the kernel monitor,
+// optionally providing a trap frame indicating the current state
+// (NULL if none).
+void monitor(struct Trapframe *tf);
+```
