@@ -64,7 +64,8 @@
 	TRAPHANDLER(page_fault, T_PGFLT) 
 
 	TRAPHANDLER_NOEC(floating_point_error, T_FPERR) 
-
+	//x86手册9.10中没有说明aligment check && machine check
+	//&& SIMD floating point error是否返回error code，故没写上
 	TRAPHANDLER_NOEC(system_call, T_SYSCALL)
 /*
  * Lab 3: Your code here for _alltraps
@@ -74,7 +75,7 @@ _alltraps:
 	pushl %es
 	pushal
 
-	mov GD_KD,%eax
+	mov $GD_KD,%eax
 	mov %eax,%ds
 	mov %eax,%es
 	

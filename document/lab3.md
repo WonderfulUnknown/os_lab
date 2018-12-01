@@ -259,13 +259,17 @@ trap_init();	中断初始化
 在int $0x30的地址0x800a1c处设置断点，成功运行到该代码处说明前面写的代码没有出错
 ![](/document/picture/6.png)
 # 练习4
-## trapentry.S中汇编代码
+## trapentry.S
 .global/.globl:用来定义一个全局的符号
 使用.global/.globl将函数声明为全局函数以后就可以被其他文件调用。
 .type:用来指定一个符号的类型是函数类型或者是对象类型,对象类型一般是数据
 .align:用来指定内存对齐方式
 
 在CPU返回error code的时候调用TRAPHANDLER，没有则调用TRAPHANDLER_NOEC
+
+关于内联汇编的部分参考了博客[https://blog.csdn.net/slvher/article/details/8864996](https://blog.csdn.net/slvher/article/details/8864996)
+>其实很多都没看懂
+
 ### first
 关于CPU何时返回error code，可参考Intel手册
 [https://pdos.csail.mit.edu/6.828/2014/readings/i386/s09_10.htm](https://pdos.csail.mit.edu/6.828/2014/readings/i386/s09_10.htm)
@@ -279,10 +283,109 @@ pushal指令会按顺序将eax到edi压入栈中,具体参考下面网站
 [http://www.fermimn.gov.it/linux/quarta/x86/pusha.htm](http://www.fermimn.gov.it/linux/quarta/x86/pusha.htm)
 #### GD_KD
 memlayout.h中定义
-`#define GD_KD     0x10     // kernel data`
-这里需要注意不能直接用立即数给段寄存器赋值，至于为什么还是不太懂，可以参考下面的讨论
-[https://bbs.csdn.net/topics/340215235](https://bbs.csdn.net/topics/340215235)
+GD_KD内核数据段的偏移量
+```
+/*
+ * This file contains definitions for memory management in our OS,
+ * which are relevant to both the kernel and user-mode software.
+ */
 
+// Global descriptor numbers
+#define GD_KT     0x08     // kernel text
+#define GD_KD     0x10     // kernel data
+#define GD_UT     0x18     // user text
+#define GD_UD     0x20     // user data
+#define GD_TSS0   0x28     // Task segment selector for CPU 0
+```
+需要注意的是内联汇编需要通过使用 $ 指定操作立即数
+>这里需要注意不能直接用立即数给段寄存器赋值，至于为什么还是不太懂，可以参考下面的讨论
+[https://bbs.csdn.net/topics/340215235](https://bbs.csdn.net/topics/340215235)
 所以应该先给通用寄存器赋值，或者入栈出栈来实现赋值。
+
 ## trap_init
-根据trapentery.S中的提示，声明函数
+根据trapentery.S中的提示，声明函数，同时也使用SETGATE设置IDT。
+### 设置IDT
+在kern/trap.h中找到Gatedesc结构的idt数组
+```
+/* The kernel's interrupt descriptor table */
+extern struct Gatedesc idt[];
+extern struct Pseudodesc idt_pd;
+```
+
+#### Gatedesc
+mmu.h中定义
+```
+// Gate descriptors for interrupts and traps
+struct Gatedesc {
+	unsigned gd_off_15_0 : 16;   // low 16 bits of offset in segment
+	unsigned gd_sel : 16;        // segment selector
+	unsigned gd_args : 5;        // # args, 0 for interrupt/trap gates
+	unsigned gd_rsv1 : 3;        // reserved(should be zero I guess)
+	unsigned gd_type : 4;        // type(STS_{TG,IG32,TG32})
+	unsigned gd_s : 1;           // must be 0 (system)
+	unsigned gd_dpl : 2;         // descriptor(meaning new) privilege level
+	unsigned gd_p : 1;           // Present
+	unsigned gd_off_31_16 : 16;  // high bits of offset in segment
+};
+```
+其中涉及到位域的概念可参考下面博客[https://blog.csdn.net/ai2000ai/article/details/56489667](https://blog.csdn.net/ai2000ai/article/details/56489667)
+#### SETGATE
+mmu.h中定义
+```
+#define SETGATE(gate, istrap, sel, off, dpl)			\
+{								\
+	(gate).gd_off_15_0 = (uint32_t) (off) & 0xffff;		\
+	(gate).gd_sel = (sel);					\
+	(gate).gd_args = 0;					\
+	(gate).gd_rsv1 = 0;					\
+	(gate).gd_type = (istrap) ? STS_TG32 : STS_IG32;	\
+	(gate).gd_s = 0;					\
+	(gate).gd_dpl = (dpl);					\
+	(gate).gd_p = 1;					\
+	(gate).gd_off_31_16 = (uint32_t) (off) >> 16;		\
+}
+```
+根据注释可知
+SETGATE是用来设置正常的中断/陷阱向量表的。
+ -  istrap：1表示陷阱（异常），0表示中断。
+中断和陷阱影响中断使能标志(IF)。 通过向量的中断复位IF，从而防止其他中断干扰当前的中断处理程序。随后通过IRET指令将IF恢复为堆栈上EFLAGS映像中的值。通过陷阱的中断不会改变IF。
+ -  sel：中断/陷阱处理程序的代码段选择器
+ -  off：中断/陷阱处理程序的代码段偏移量
+ -  dpl：Descriptor Privilege Level 描述符权限级别
+软件调用所需的权限级别。
+中断/陷阱显式地使用int指令。
+
+>不太懂为什么off直接写上函数名,对istrap和dpl的设置不太确定
+可能是函数名对应着函数的地址，可以作为相对于段的偏移？
+
+## 问题
+### 1
+>对每一个中断/异常都分别给出中断处理函数的目的是什么？换句话说，如果所有的中断都交给同一个中断处理函数处理，现在我们实现的哪些功能就没办法实现了？
+
+因为不同的中断/异常之间所需要的处理并不完全一样，例如中断/异常结束之后是需要从中断/异常继续执行，还是跳过这条指令，或者是其他的处理方式。而且不同的中断/异常需要的权限也是不一样，也不全都会返回error code。全使用一个中断处理函数还需要用switch或者if来进行分类处理。
+如果都交给一个中断处理函数处理，函数写得合理应该还能实现中断处理。
+### 2
+>你有没有额外做什么事情让 user/softint 这个程序按预期运行？打分脚本希望它产生一个一般保护错(陷阱 13)，可是 softint 的代码却发送的是 int $14。为什么 这个产生了中断向量 13 ？如果内核允许 softint 的 int $14 指令去调用内核中断向量 14 所对应的的缺页处理函数，会发生什么？
+
+首先查看user/softint代码
+```
+void
+umain(int argc, char **argv)
+{
+	asm volatile("int $14");	// page fault
+}
+```
+grade-lab3代码
+```
+@test(10)
+def test_softint():
+    r.user_test("softint")
+    r.match('Welcome to the JOS kernel monitor!',
+            'Incoming TRAP frame at 0xefffffbc',
+            'TRAP frame at 0xf.......',
+            '  trap 0x0000000d General Protection',
+            '  eip  0x008.....',
+            '  ss   0x----0023',
+            '.00001000. free env 0000100')
+```
+因为当前系统运行在用户态模式下，权限级别为3，而INT指令是系统指令，权限级别为0，因此会首先引发 Gerneral Protection Fault，根据前面可知define T_GPFLT 13。
