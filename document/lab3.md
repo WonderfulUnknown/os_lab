@@ -12,9 +12,7 @@ env.h中定义
 extern struct Env *envs;		// All environments
 ```
 ## env_setup_vm
->identical 相同的
-
- 为新的进程分配一个页目录，并初始化新进程的地址空间对应的内核部分。
+为新的进程分配一个页目录，并初始化新进程的地址空间对应的内核部分。
 所有envs结构的虚拟地址都是在UTOP上的。
 UTOP之上env_pgdir可以拷贝kern_pgdir, 因为所有用户环境的页目录表中和操作系统相关的页目录项都是一样的，但是UVPT处的env_pgdir需要单独设置成用户只读。
 >每个用户进程都需要共享内核空间，所以对于用户进程而言，在UTOP以上的部分，和系统内核的空间是完全一样的。
@@ -26,14 +24,12 @@ void *	memcpy(void *dst, const void *src, size_t len);
 ```
 memcpy函数的功能是从源src所指的内存地址的起始位置开始拷贝n个字节到目标dest所指的内存地址的起始位置中。
 ## region_alloc
->corner-cases 极端情况
-
 为进程分配和映射物理内存。
 利用lab2中的 page_alloc() 完成内存页的分配， page_insert() 完成虚拟地址到物理页的映射。
 注意把虚拟地址va，va+len以4k为单位取整，方便后面以页为单位计算。
 还需要检查页表是否申请成功，是否映射到对应的物理地址。 
 ## load_icode
-为每一个用户进程设置它的初始代码区，堆栈以及处理器标识位。因为用户程序是ELF文件，所以要解析ELF文件。
+将ELF二进制文件读入内存，为每一个用户进程设置它的初始代码区，堆栈以及处理器标识位。因为用户程序是ELF文件，所以要解析ELF文件。
 >函数只在内核初始化且第一个用户进程未运行时被调用，从ELF文件头部指明的虚拟地址开始加载需要加载的字段到用户内存
 
 该段代码需要参考boot/main.c文件来写。
@@ -125,11 +121,11 @@ extern struct Env *curenv;		// Current environment
 使用'iret'指令复原Trapframe中的寄存器值，退出内核，开始运行一些进程的代码。
 ENV结构中提到Trapframe结构的寄存器
 `struct Trapframe env_tf; 	// 保存的寄存器`
-env.h中定义
+env.h中声明
 ```
 void	env_pop_tf(struct Trapframe *tf) __attribute__((noreturn));
 ```
-env.c中实现
+env.c中定义
 ```
 // Restores the register values in the Trapframe with the 'iret' instruction.
 // This exits the kernel and starts executing some environment's code.
@@ -425,7 +421,7 @@ void monitor(struct Trapframe *tf);
 >lib里应该都是用户所需要的依赖文件？
 
 ## syscall
-lib/syscall.c中声明
+lib/syscall.c中定义
 ```
 static inline int32_t
 syscall(int num, int check, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, uint32_t a5)
@@ -475,7 +471,7 @@ GCC内联汇编语法固定为：
 ```
 关于内联汇编的部分参考了博客[https://blog.csdn.net/slvher/article/details/8864996](https://blog.csdn.net/slvher/article/details/8864996)
 ### system call numbers
-inc/syscall.h中定义
+inc/syscall.h中声明
 ```
 /* system call numbers */
 enum {
@@ -486,7 +482,7 @@ enum {
 	NSYSCALLS
 };
 ```
-lib/syscall.c中声明
+lib/syscall.c中定义
 ```
 void
 sys_cputs(const char *s, size_t len)
@@ -543,10 +539,44 @@ inc/env.h中定义
 该函数主要是检查对应的用户进程是否能访问对应的内存空间
 利用lab2中完成的pgdir_walk函数，填入进程的pgdir地址，返回va虚拟地址对应的页表项。
 根据注释可知如果地址低于ULIM，并且页表给予了权限，则用户程序可以访问虚拟地址。
->需要注意的是，因为以页为单位来考虑问题，所以需要对地址取整，同时也可能出错的位置在传入的虚拟地址va之前或之后。
+>需要注意的是，因为以页为单位来考虑问题，所以需要对地址取整
+!就算出错的是va之前的地址，需要返回的也应该是va的地址
 
 ## 修改 kern/syscall.c 
 验证系统调用的参数
 发现kern/syscall.c中系统调用函数里只有sys_cputs()参数中存在指针，所以对其进行检测。
 ## 修改kdebug.c
 对 usd, stabs, stabstr 都要调用 user_mem_check
+
+# 补充
+>依旧忘记在哪个博客看到的了
+
+## before
+由于每个用户进程都需要共享内核空间，所以对于用户进程而言，在UTOP以上的部分，和系统内核的空间是完全一样的。因此在pgdir开始设置的时候，只需要在一级页表目录上，把共享部分的一级页表目录部分复制进用户进程的地址空间就可以了，这样，就实现了页面的共享。因为一级页目录里面存储的是二级页表目录的物理地址，其直接映射到物理内存部分，而共享的内核部分的二级页目录在前期的内核操作中，已经完成了映射，所以二级页目录是不需要初始化的。简单来说，不需要映射二级页表的原因是，用户进程可以和内核共用这些二级页表。
+## load_icode()
+作用是将 ELF 二进制文件读入内存，由于 JOS 暂时还没有自己的文件系统，实际就是从 *binary 这个内存地址读取。
+大概需要做的事：
+
+    根据 ELF header 得出 Programm header。
+    遍历所有 Programm header，分配好内存，加载类型为 ELF_PROG_LOAD 的段。
+    分配用户栈。
+
+需要思考的问题：
+
+    怎么切换页目录？
+    lcr3([页目录物理地址]) 将地址加载到 cr3 寄存器。
+    怎么更改函数入口？
+    将 env->env_tf.tf_eip 设置为 elf->e_entry，等待之后的 env_pop_tf() 调用。
+
+ memset((void *)ph[i].p_va, 0, ph[i].p_memsz);       //因为这里需要访问刚分配的内存，所以之前需要切换页目录
+  memcpy((void *)ph[i].p_va, binary + ph[i].p_offset, ph[i].p_filesz); //应该有如下关系：ph->p_filesz <= ph->p_memsz。搜索BSS段
+## trapentry.S
+　首先看一下 trapentry.S 文件，里面定义了两个宏定义，TRAPHANDLER，TRAPHANDLER_NOEC。他们的功能从汇编代码中可以看出：声明了一个全局符号name，并且这个符号是函数类型的，代表它是一个中断处理函数名。其实这里就是两个宏定义的函数。这两个函数就是当系统检测到一个中断/异常时，需要首先完成的一部分操作，包括：中断异常码，中断错误码(error code)。正是因为有些中断有中断错误码，有些没有，所以我们采用利用两个宏定义函数。
+
+　　　　然后就会调用 _alltraps，_alltraps函数其实就是为了能够让程序在之后调用trap.c中的trap函数时，能够正确的访问到输入的参数，即Trapframe指针类型的输入参数tf。
+
+　　　　所以在trapentry.S中，我们要根据这个中断是否有中断错误码，来选择调用TRAPHANDLER，还是TRAPHANDLER_NOEC，然后再统一调用_alltraps，其实目的就是为了能够让系统在正式运行中断处理程序之前完成必要的准备工作，比如保存现场等等。
+## 练习3
+需要加载到代码段寄存器(CS)的值，其中最低两位表示优先级（这也是为什么说可以寻址 2^46 的空间而不是 2^48)。 在JOS 中，所有的异常都在内核模式处理，优先级为0 (用户模式为3)。
+## 练习7
+现在回顾一下系统调用的完成流程：以user/hello.c为例，其中调用了cprintf()，注意这是lib/print.c中的cprintf，该cprintf()最终会调用lib/syscall.c中的sys_cputs()，sys_cputs()又会调用lib/syscall.c中的syscall()，该函数将系统调用号放入%eax寄存器，五个参数依次放入in DX, CX, BX, DI, SI，然后执行指令int 0x30，发生中断后，去IDT中查找中断处理函数，最终会走到kern/trap.c的trap_dispatch()中，我们根据中断号0x30，又会调用kern/syscall.c中的syscall()函数（注意这时候我们已经进入了内核模式CPL=0），在该函数中根据系统调用号调用kern/print.c中的cprintf()函数，该函数最终调用kern/console.c中的cputchar()将字符串打印到控制台。当trap_dispatch()返回后，trap()会调用env_run(curenv);，该函数前面讲过，会将curenv->env_tf结构中保存的寄存器快照重新恢复到寄存器中，这样又会回到用户程序系统调用之后的那条指令运行，只是这时候已经执行了系统调用并且寄存器eax中保存着系统调用的返回值。任务完成重新回到用户模式CPL=3。

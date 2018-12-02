@@ -637,7 +637,10 @@ user_mem_check(struct Env *env, const void *va, size_t len, int perm)
 		//4.pte的权限比perm高，说明当前权限无法访问对应内存
 		if(i >= ULIM || !pte || !(*pte & PTE_P) || (*pte & perm) != perm)
 		{
-			if(i < (uint32_t)va)//!
+// If there is an error, set the 'user_mem_check_addr' variable to the first
+// erroneous virtual address.
+			//如果出错的是va之前的地址，需要返回的也应该是va的地址
+			if(i < (uint32_t)va)
 				user_mem_check_addr = (uint32_t)va;
 			else 
 				user_mem_check_addr = i;

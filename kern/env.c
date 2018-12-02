@@ -360,7 +360,7 @@ load_icode(struct Env *e, uint8_t *binary)
 	struct Elf *elf;
 	// 强制类型转换，将binary后的内存空间内容按照结构ELF的格式读取
 	elf = (struct Elf *)binary;
-	// is this a valid ELF?
+	// is this a valid ELF? 判断是否是ELF
 	// ELF头开头的结构体叫做魔数,是一个16位的数组
 	if(elf->e_magic != ELF_MAGIC)
 		panic("load segements fail");
