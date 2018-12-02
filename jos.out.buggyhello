@@ -1,9 +1,9 @@
 + ld obj/kern/kernel
 + mk obj/kern/kernel.img
 
-(process:25210): GLib-WARNING **: /build/glib2.0-7ZsPUq/glib2.0-2.48.2/./glib/gmem.c:483: custom memory allocation vtable not supported
+(process:17955): GLib-WARNING **: /build/glib2.0-7ZsPUq/glib2.0-2.48.2/./glib/gmem.c:483: custom memory allocation vtable not supported
 
-(process:25212): GLib-WARNING **: /build/glib2.0-7ZsPUq/glib2.0-2.48.2/./glib/gmem.c:483: custom memory allocation vtable not supported
+(process:17957): GLib-WARNING **: /build/glib2.0-7ZsPUq/glib2.0-2.48.2/./glib/gmem.c:483: custom memory allocation vtable not supported
 6828 decimal is 15254 octal!
 Physical memory: 66556K available, base = 640K, extended = 65532K
 page_alloc
@@ -137,24 +137,25 @@ page_alloc
 page_alloc
 36016740000 
 Incoming TRAP frame at 0xefffffbc
-TRAP frame at 0xf0197000
-  edi  0x00000000
-  esi  0x00000000
-  ebp  0xeebfdfb0
-  oesp 0xefffffdc
+Incoming TRAP frame at 0xeffffe8c
+[00001000] user fault va 00000001 ip f0103d16
+TRAP frame at 0xeffffe8c
+  edi  0x00000002
+  esi  0x00000001
+  ebp  0xefffff00
+  oesp 0xeffffeac
   ebx  0x00000000
-  edx  0x00000001
-  ecx  0x00000001
-  eax  0x00000000
-  es   0x----0023
-  ds   0x----0023
-  trap 0x0000000d General Protection
-  err  0x00000182
-  eip  0x008000a6
-  cs   0x----001b
-  flag 0x00000086
-  esp  0xeebfdfa4
-  ss   0x----0023
+  edx  0xefffff64
+  ecx  0x00000073
+  eax  0xf0105aa3
+  es   0x----0010
+  ds   0x----0010
+  trap 0x0000000e Page Fault
+  cr2  0x00000001
+  err  0x00000000 [kernel, read, not-present]
+  eip  0xf0103d16
+  cs   0x----0008
+  flag 0x00000002
 [00001000] free env 00001000
 page_free
 page_free
@@ -170,4 +171,4 @@ page_free
 Destroyed the only environment - nothing more to do!
 Welcome to the JOS kernel monitor!
 Type 'help' for a list of commands.
-qemu: terminating on signal 15 from pid 25134
+qemu: terminating on signal 15 from pid 17880

@@ -90,7 +90,7 @@ trap_init(void)
 	SETGATE(idt[T_DIVIDE], 1, GD_KT, divide_error, 0);
 	SETGATE(idt[T_DEBUG], 1, GD_KT, debug_exception, 0);
 	SETGATE(idt[T_NMI], 1, GD_KT, non_maskable_interrupt, 0);
-	SETGATE(idt[T_BRKPT], 1, GD_KT, break_point, 3);
+	SETGATE(idt[T_BRKPT], 1, GD_KT, break_point, 3);//!
 	SETGATE(idt[T_OFLOW], 1, GD_KT, overflow, 0);
 	SETGATE(idt[T_BOUND], 1, GD_KT, bounds_check, 0);
 	SETGATE(idt[T_ILLOP], 1, GD_KT, illegal_opcode, 0);
@@ -105,7 +105,7 @@ trap_init(void)
 
 	SETGATE(idt[T_FPERR], 1, GD_KT, floating_point_error, 0);
 
-	SETGATE(idt[T_SIMDERR], 1, GD_KT, system_call, 0);
+	SETGATE(idt[T_SYSCALL], 0, GD_KT, system_call, 3);
 
 	// Per-CPU setup 
 	trap_init_percpu();
@@ -191,6 +191,11 @@ trap_dispatch(struct Trapframe *tf)
 		break;
 	case T_BRKPT:
 		monitor(tf);
+		break;
+	case T_SYSCALL:
+		tf->tf_regs.reg_eax = syscall(tf->tf_regs.reg_eax, 
+		tf->tf_regs.reg_edx, tf->tf_regs.reg_ecx, tf->tf_regs.reg_ecx, 
+		tf->tf_regs.reg_edi, tf->tf_regs.reg_esi);
 		break;
 	default:
 		// Unexpected trap: The user process or the kernel has a bug.

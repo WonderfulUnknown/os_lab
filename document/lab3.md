@@ -268,7 +268,6 @@ trap_init();	中断初始化
 在CPU返回error code的时候调用TRAPHANDLER，没有则调用TRAPHANDLER_NOEC
 
 关于内联汇编的部分参考了博客[https://blog.csdn.net/slvher/article/details/8864996](https://blog.csdn.net/slvher/article/details/8864996)
->其实很多都没看懂
 
 ### first
 关于CPU何时返回error code，可参考Intel手册
@@ -389,23 +388,125 @@ def test_softint():
             '.00001000. free env 0000100')
 ```
 因为当前系统运行在用户态模式下，权限级别为3，而INT指令是系统指令，权限级别为0，因此会首先引发 Gerneral Protection Fault，根据前面可知define T_GPFLT 13。
-## 练习5
-### trap_dispatch
+# 练习5
+## trap_dispatch
 根据trap number对不同的中断/异常进行处理分配
-### page_fault_handler
+## page_fault_handler
 trap.h中定义
 ```
 void page_fault_handler(struct Trapframe *);
 ```
-## 练习6
+# 练习6
 make grade失败，发现
 ` MISSING '  trap 0x00000003 Breakpoint'`
 回头把break_point的权限修改为3就解决了
-### monitor
+## monitor
 monitor.h中定义
 ```
 // Activate the kernel monitor,
 // optionally providing a trap frame indicating the current state
 // (NULL if none).
 void monitor(struct Trapframe *tf);
+```
+## 问题
+### 1
+>断点那个测试样例可能会生成一个断点异常，或者生成一个一般保护错，这取决你是怎样在 IDT 中初始化它的入口的（换句话说，你是怎样在 trap_init 中调用 SETGATE 方法的）。为什么？你应该做什么才能让断点异常像上面所说的那样工作？怎样的错误配置会导致一般保护错？
+
+在trap_init中调用SETGATE方法，是对中断/异常向量表进行设置。
+在 trap_init 中设置好中断的入口，并且设置中断的权限，使得用户进程或者系统内核能够产生这个中断。
+权限不够的时候会导致一般保护错误，比如运行在用户模式下，想要调用系统中断的时候。
+### 2
+>你认为这样的机制意义是什么？尤其要想想测试程序 user/softint 的所作所为 
+
+通过不同的权限设置来保护操作系统，避免用户程序能通过调用系统中断来进行内核空间。
+# 练习7
+模仿前面中断/异常调用，在trapentry.S和trap.c中为syscall添加调用。
+需要注意区分kern和lib中的syscall，在kern/trap.c中调用的实际上就是kern/syscall.c的syscall函数，而不是lib/syscall.c中的函数。
+## syscall
+lib/syscall.c中声明
+```
+static inline int32_t
+syscall(int num, int check, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, uint32_t a5)
+{
+	int32_t ret;
+
+	// Generic system call: pass system call number in AX,
+	// up to five parameters in DX, CX, BX, DI, SI.
+	// Interrupt kernel with T_SYSCALL.
+	//
+	// The "volatile" tells the assembler not to optimize
+	// this instruction away just because we don't use the
+	// return value.
+	//
+	// The last clause tells the assembler that this can
+	// potentially change the condition codes and arbitrary
+	// memory locations.
+
+	asm volatile("int %1\n"
+		: "=a" (ret)
+		: "i" (T_SYSCALL),
+		  "a" (num),
+		  "d" (a1),
+		  "c" (a2),
+		  "b" (a3),
+		  "D" (a4),
+		  "S" (a5)
+		: "cc", "memory");
+
+	if(check && ret > 0)
+		panic("syscall %d returned %d (> 0)", num, ret);
+
+	return ret;
+}
+```
+根据注释可知
+这段代码是通用系统调用，通过返回AX来传递系统调用号，最多DX，CX，BX，DI，SI五个参数。 用T_SYSCALL中断内核。 “volatile”告诉汇编器不优化该指令。 最后一个子句告诉汇编器可能会改变条件代码和任意内存的位置。
+### GCC内联汇编
+GCC内联汇编语法固定为：
+```
+ asm [ volatile ] (  
+         assembler template
+         [ : output operands ] /* optional */
+         [ : input operands  ] /* optional */
+         [ : list of clobbered registers ] /* optional */
+         );
+```
+关于内联汇编的部分参考了博客[https://blog.csdn.net/slvher/article/details/8864996](https://blog.csdn.net/slvher/article/details/8864996)
+### system call numbers
+inc/syscall.h中定义
+```
+/* system call numbers */
+enum {
+	SYS_cputs = 0,
+	SYS_cgetc,
+	SYS_getenvid,
+	SYS_env_destroy,
+	NSYSCALLS
+};
+```
+lib/syscall.c中声明
+```
+void
+sys_cputs(const char *s, size_t len)
+{
+	syscall(SYS_cputs, 0, (uint32_t)s, len, 0, 0, 0);
+}
+
+int
+sys_cgetc(void)
+{
+	return syscall(SYS_cgetc, 0, 0, 0, 0, 0, 0);
+}
+
+int
+sys_env_destroy(envid_t envid)
+{
+	return syscall(SYS_env_destroy, 1, envid, 0, 0, 0, 0);
+}
+
+envid_t
+sys_getenvid(void)
+{
+	 return syscall(SYS_getenvid, 0, 0, 0, 0, 0, 0);
+}
 ```
