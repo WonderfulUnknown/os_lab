@@ -637,23 +637,13 @@ user_mem_check(struct Env *env, const void *va, size_t len, int perm)
 		//4.pte的权限比perm高，说明当前权限无法访问对应内存
 		if(i >= ULIM || !pte || !(*pte & PTE_P) || (*pte & perm) != perm)
 		{
-			if(i < (uint32_t)va)
+			if(i < (uint32_t)va)//!
 				user_mem_check_addr = (uint32_t)va;
 			else 
 				user_mem_check_addr = i;
 			return -E_FAULT;
 		} 
 	}
-    // uint32_t begin = (uint32_t) ROUNDDOWN(va, PGSIZE); 
-    // uint32_t end = (uint32_t) ROUNDUP(va+len, PGSIZE);
-    // uint32_t i;
-    // for (i = (uint32_t)begin; i < end; i += PGSIZE) {
-    //     pte_t *pte = pgdir_walk(env->env_pgdir, (void*)i, 0);
-    //     if ((i >= ULIM) || !pte || !(*pte & PTE_P) || ((*pte & perm) != perm)) {        //具体检测规则
-    //         user_mem_check_addr = (i < (uint32_t)va ? (uint32_t)va : i);                //记录无效的那个线性地址
-    //         return -E_FAULT;
-    //     }
-    // }
 	return 0;
 }
 
