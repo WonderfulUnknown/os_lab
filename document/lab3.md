@@ -548,3 +548,5 @@ inc/env.h中定义
 ## 修改 kern/syscall.c 
 验证系统调用的参数
 发现kern/syscall.c中系统调用函数里只有sys_cputs()参数中存在指针，所以对其进行检测。
+## 修改kdebug.c
+对 usd, stabs, stabstr 都要调用 user_mem_check
