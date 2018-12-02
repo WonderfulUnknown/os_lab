@@ -422,6 +422,8 @@ void monitor(struct Trapframe *tf);
 # 练习7
 模仿前面中断/异常调用，在trapentry.S和trap.c中为syscall添加调用。
 需要注意区分kern和lib中的syscall，在kern/trap.c中调用的实际上就是kern/syscall.c的syscall函数，而不是lib/syscall.c中的函数。
+>lib里应该都是用户所需要的依赖文件？
+
 ## syscall
 lib/syscall.c中声明
 ```
@@ -510,3 +512,39 @@ sys_getenvid(void)
 	 return syscall(SYS_getenvid, 0, 0, 0, 0, 0, 0);
 }
 ```
+## JOS系统调用的步骤
+1.用户进程使用 inc/ 目录下暴露的接口
+2.lib/syscall.c 中的函数将系统调用号及必要参数传给寄存器，并引起一次 int $0x30 中断
+3.kern/trap.c 捕捉到这个中断，并将 TrapFrame 记录的寄存器状态作为参数，调用处理中断的函数
+4.kern/syscall.c 处理中断
+# 练习8
+## libmain
+使用sys_getenvid，初始化thisenv全局指针，使它指向envs[]中的当前Env结构
+```
+const volatile struct Env *thisenv;
+```
+## ENVX
+inc/env.h中定义
+```
+#define LOG2NENV		10
+#define NENV			(1 << LOG2NENV)
+#define ENVX(envid)		((envid) & (NENV - 1))
+```
+结合之前的注释可知，envid_t有三部分，最后10位是Environment Index(eid)，使用ENVX(envid)可以截取后10位的值。
+# 练习9
+## 修改page_fault_handler
+参考已有的其他代码，例如
+```
+	if ((tf->tf_cs & 3) == 3) {
+		// Trapped from user mode.
+```
+得知tf_cs等于3时是用户态，等于0时是内核态。
+## user_mem_check
+该函数主要是检查对应的用户进程是否能访问对应的内存空间
+利用lab2中完成的pgdir_walk函数，填入进程的pgdir地址，返回va虚拟地址对应的页表项。
+根据注释可知如果地址低于ULIM，并且页表给予了权限，则用户程序可以访问虚拟地址。
+>需要注意的是，因为以页为单位来考虑问题，所以需要对地址取整，同时也可能出错的位置在传入的虚拟地址va之前或之后。
+
+## 修改 kern/syscall.c 
+验证系统调用的参数
+发现kern/syscall.c中系统调用函数里只有sys_cputs()参数中存在指针，所以对其进行检测。

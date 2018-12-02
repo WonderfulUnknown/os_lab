@@ -626,7 +626,24 @@ int
 user_mem_check(struct Env *env, const void *va, size_t len, int perm)
 {
 	// LAB 3: Your code here.
-
+	uint32_t start = (uint32_t)ROUNDDOWN(va, PGSIZE);
+	uint32_t end = (uint32_t)ROUNDUP(va+len, PGSIZE);
+	for(uint32_t i = start;i < end;i += PGSIZE)
+	{
+		pte_t *pte = pgdir_walk(env->env_pgdir, va, 0);
+// A user program can access a virtual address if (1) the address is below
+// ULIM, and (2) the page table gives it permission. 
+		//不满足的条件:1.地址大于ULIM 2.pte不存在 3.pte没有PTE_P的权限位 
+		//4.pte的权限比perm高，说明当前权限无法访问对应内存
+		if(*pte >= ULIM || !pte || !(*pte & PTE_P) || (*pte & perm) != perm)
+		{
+			if(i < (uint32_t)va)
+				user_mem_check_addr = i;
+			else 
+				user_mem_check_addr = (uint32_t)va;
+			return -E_FAULT;
+		} 
+	}
 	return 0;
 }
 

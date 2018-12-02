@@ -117,7 +117,7 @@ qemu-system-i386 -hda obj/kern/kernel.img -monitor stdio -gdb tcp::26000 -D qemu
 ```
 可以在linux的terminal里进入到监控器。
 # 练习4
-## padir_walk
+## pgdir_walk
 主要是用过一个给定的虚拟地址va和pgdir(page director table的首地址), 返回va所对应的pte(page table entry)中的页表项。当va对应的页表存在时，只需要直接按照页面翻译的过程给出页表项的地址；当va对应的页表没有被创建的时候，就需要手动的申请并创建页面。
 最后需要返回的是虚拟地址，而不能直接返回页表项的物理地址。因为程序里面只能执行虚拟地址，给出的物理地址也会被当成是虚拟地址，会引发错误。
 ### pte_t,pde_t
