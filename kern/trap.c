@@ -73,6 +73,47 @@ trap_init(void)
 
 	// LAB 3: Your code here.
 
+
+	void divide_error();
+	void debug_exception();
+	void non_maskable_interrupt();
+	void break_point();
+	void overflow();
+	void bounds_check();
+	void illegal_opcode();
+	void device_not_available();
+	void double_fault();
+
+	void invalid_task_switch_segment();
+	void segment_not_present();
+	void stack_exception();
+	void general_protection_fault();
+	void page_fault();
+	
+	void floating_point_error();
+
+	void system_call();
+
+	SETGATE(idt[T_DIVIDE], 1, GD_KT, divide_error, 0);
+	SETGATE(idt[T_DEBUG], 1, GD_KT, debug_exception, 0);
+	SETGATE(idt[T_NMI], 1, GD_KT, non_maskable_interrupt, 0);
+	SETGATE(idt[T_BRKPT], 1, GD_KT, break_point, 3);//!
+	SETGATE(idt[T_OFLOW], 1, GD_KT, overflow, 0);
+	SETGATE(idt[T_BOUND], 1, GD_KT, bounds_check, 0);
+	SETGATE(idt[T_ILLOP], 1, GD_KT, illegal_opcode, 0);
+	SETGATE(idt[T_DEVICE], 1, GD_KT, device_not_available, 0);
+	SETGATE(idt[T_DBLFLT], 1, GD_KT, double_fault, 0);
+
+	SETGATE(idt[T_TSS], 1, GD_KT, invalid_task_switch_segment, 0);
+	SETGATE(idt[T_SEGNP], 1, GD_KT, segment_not_present, 0);
+	SETGATE(idt[T_STACK], 1, GD_KT, stack_exception, 0);
+	SETGATE(idt[T_GPFLT], 1, GD_KT, general_protection_fault, 0);
+	SETGATE(idt[T_PGFLT], 1, GD_KT, page_fault, 0);
+
+	SETGATE(idt[T_FPERR], 1, GD_KT, floating_point_error, 0);
+
+	SETGATE(idt[T_SYSCALL], 0, GD_KT, system_call, 3);
+
 	// Per-CPU setup 
 	trap_init_percpu();
 }
@@ -173,6 +214,30 @@ trap_dispatch(struct Trapframe *tf)
 {
 	// Handle processor exceptions.
 	// LAB 3: Your code here.
+	switch (tf->tf_trapno)
+	{
+	case T_PGFLT:
+		page_fault_handler(tf);
+		break;
+	case T_BRKPT:
+		monitor(tf);
+		break;
+	case T_SYSCALL:
+		tf->tf_regs.reg_eax = syscall(tf->tf_regs.reg_eax, 
+		tf->tf_regs.reg_edx, tf->tf_regs.reg_ecx, tf->tf_regs.reg_ecx, 
+		tf->tf_regs.reg_edi, tf->tf_regs.reg_esi);
+		break;
+	default:
+		// Unexpected trap: The user process or the kernel has a bug.
+		print_trapframe(tf);
+		if (tf->tf_cs == GD_KT)
+			panic("unhandled trap in kernel");
+		else
+		{
+			env_destroy(curenv);
+			return;
+		}
+	}
 
 	// Handle spurious interrupts
 	// The hardware sometimes raises these because of noise on the
@@ -268,7 +333,8 @@ page_fault_handler(struct Trapframe *tf)
 	// Handle kernel-mode page faults.
 
 	// LAB 3: Your code here.
-
+	if ((tf->tf_cs & 3) == 0) //缺页中断发生在内核中
+    	panic("page fault happen in kernel mode!\n");
 	// We've already handled kernel-mode exceptions, so if we get here,
 	// the page fault happened in user mode.
 

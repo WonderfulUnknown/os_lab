@@ -4,12 +4,9 @@
 #include <inc/memlayout.h>
 #include <inc/trap.h>
 
+<<<<<<< HEAD
 #include <kern/picirq.h>
 
-
-###################################################################
-# exceptions/interrupts
-###################################################################
 
 /* TRAPHANDLER defines a globally-visible function for handling a trap.
  * It pushes a trap number onto the stack, then jumps to _alltraps.
@@ -50,7 +47,37 @@
 
 
 
+	TRAPHANDLER_NOEC(divide_error, T_DIVIDE) 
+	TRAPHANDLER_NOEC(debug_exception, T_DEBUG) 
+	TRAPHANDLER_NOEC(non_maskable_interrupt, T_NMI) 
+	TRAPHANDLER_NOEC(break_point, T_BRKPT)// inc/x86.中有breakpoint同名函数
+	TRAPHANDLER_NOEC(overflow, T_OFLOW) 
+	TRAPHANDLER_NOEC(bounds_check, T_BOUND) 
+	TRAPHANDLER_NOEC(illegal_opcode, T_ILLOP) 
+	TRAPHANDLER_NOEC(device_not_available, T_DEVICE) 
+	TRAPHANDLER(double_fault, T_DBLFLT) 
+
+	TRAPHANDLER(invalid_task_switch_segment, T_TSS) 
+	TRAPHANDLER(segment_not_present, T_SEGNP) 
+	TRAPHANDLER(stack_exception, T_STACK) 
+	TRAPHANDLER(general_protection_fault, T_GPFLT) 
+	TRAPHANDLER(page_fault, T_PGFLT) 
+
+	TRAPHANDLER_NOEC(floating_point_error, T_FPERR) 
+	//x86手册9.10中没有说明aligment check && machine check
+	//&& SIMD floating point error是否返回error code，故没写上
+	TRAPHANDLER_NOEC(system_call, T_SYSCALL)
 /*
  * Lab 3: Your code here for _alltraps
  */
+_alltraps:
+	pushl %ds
+	pushl %es
+	pushal
 
+	mov $GD_KD,%eax
+	mov %eax,%ds
+	mov %eax,%es
+	
+	pushl %esp  //压入trap()的参数tf，%esp指向Trapframe结构的起始地址
+	call trap
