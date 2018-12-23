@@ -377,7 +377,7 @@ page_alloc(int alloc_flags)
 		Page->pp_link = NULL;
 		//Page->pp_ref = 1;
 		Page->pp_ref = 0;
-		cprintf("page_alloc\r\n");
+		//cprintf("page_alloc\r\n");
 		if(alloc_flags & ALLOC_ZERO)
 			memset(page2kva(Page),'\0',PGSIZE);
 			// memset(page2kva(page_free_list),0,PGSIZE);
@@ -406,7 +406,7 @@ page_free(struct PageInfo *pp)
 	pp->pp_link = page_free_list;
 	page_free_list = pp;
 	//pp->pp_ref = 0;
-	cprintf("page_free\r\n");
+	//cprintf("page_free\r\n");
 }
 
 //
@@ -512,7 +512,7 @@ boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm
 {
 	// Fill this function in
 	pte_t *pte = NULL;
-	cprintf("Virtual Address %x mapped to Physical Address %x\n", va, pa);
+	//cprintf("Virtual Address %x mapped to Physical Address %x\n", va, pa);
 	for(int i = 0;i < size;i += PGSIZE){
 		pte = pgdir_walk(pgdir, (void *)va, 1);
 		*pte = (pa | perm | PTE_P);

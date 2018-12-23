@@ -23,4 +23,21 @@ kern/mpentry.S是运行在KERNBASE之上的，也就是里面的地址全是大�
 # 练习3
 ## mem_init_mp
 该函数是根据inc/memlayout.h将每个CPU堆栈映射在KSTACKTOP开始的区域。每个CPU的堆栈都留了KSTKSIZE大小，也就是8个PGSIZE的空间。同时来预留了KSTKGAP，也是8个PGSIZE大小的空间防止堆栈溢出时覆盖了下一个CPU的堆栈。
- page fault happen in kernel mode!
+## trap_init_percpu
+初始化每个CPU的任务状态段 (Task State Segment,TSS)并向全局描述符表(Global Descriptor Table,GDT)中加入对应的页表项。
+关于GDT和LDT从lab1就开始看见，如今回顾了lab2以及参考了下面的博客总算懂了[https://blog.csdn.net/wrx1721267632/article/details/52056910](https://blog.csdn.net/wrx1721267632/article/details/52056910)
+>其实GDT就是lab2中的页目录项
+
+GD_KD 内核数据段的偏移量
+### CpuInfo
+记录每个CPU当前状态
+```
+// Per-CPU state
+struct CpuInfo {
+	uint8_t cpu_id;                 // Local APIC ID; index into cpus[] below
+	volatile unsigned cpu_status;   // The status of the CPU
+	struct Env *cpu_env;            // The currently-running environment.
+	struct Taskstate cpu_ts;        // Used by x86 to find stack for interrupt
+};
+```
+>page fault happen in kernel mode!
