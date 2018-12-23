@@ -260,7 +260,12 @@ mem_init_mp(void)
 	//     Permissions: kernel RW, user NONE
 	//
 	// LAB 4: Your code here:
-
+	uintptr_t kstacktop_i;
+	for(int i = 0;i < NCPU;i++)
+	{
+		kstacktop_i = KSTACKTOP - i * (KSTKSIZE + KSTKGAP);
+		boot_map_region(kern_pgdir, kstacktop_i, KSTKSIZE, PADDR(percpu_kstacks[i]), PTE_W|PTE_P);
+	}
 }
 
 // --------------------------------------------------------------
@@ -309,6 +314,7 @@ page_init(void)
 		//lab4
 		if (i == ROUNDUP(MPENTRY_PADDR, PGSIZE) / PGSIZE) {
         	pages[i].pp_ref = 1;
+			pages[i].pp_link = NULL;
         	continue;
     	}
 
@@ -507,7 +513,8 @@ boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm
 {
 	// Fill this function in
 	pte_t *pte = NULL;
-	for(int i = 0;i < size;i += PGSIZE){
+	cprintf("Virtual Address %x mapped to Physical Address %x\n", va, pa);
+	for(int i = 0;i < PGNUM(size);i += PGSIZE){
 		pte = pgdir_walk(pgdir, (void *)va, 1);
 		*pte = (pa | perm | PTE_P);
 		va += PGSIZE;
@@ -680,23 +687,15 @@ mmio_map_region(physaddr_t pa, size_t size)
 	// Hint: The staff solution uses boot_map_region.
 	//
 	// Your code here:
-	size_t rounded_size = ROUNDUP(size, PGSIZE);
-
-    if (base + rounded_size > MMIOLIM) panic("overflow MMIOLIM");
-    boot_map_region(kern_pgdir, base, rounded_size, pa, PTE_W|PTE_PCD|PTE_PWT);
-    uintptr_t res_region_base = base;   
-    base += rounded_size;       
-    return (void *)res_region_base;
-
-	// size = ROUNDUP(size, PGSIZE);
-	// pa = ROUNDDOWN(pa, PGSIZE);
+	size = ROUNDUP(size, PGSIZE);
+	pa = ROUNDDOWN(pa, PGSIZE);
 	
-	// if(base + size > MMIOLIM)
-	// 	panic("MMIOLIM is not enough");
+	if(base + size > MMIOLIM)
+		panic("MMIOLIM is not enough");
 
-	// boot_map_region(kern_pgdir, base, size, pa, PTE_PCD|PTE_PWT|PTE_W);
-	// base += size;//每次映射到不同的页面
-	// return (void *)(base-size);
+	boot_map_region(kern_pgdir, base, size, pa, PTE_PCD|PTE_PWT|PTE_W);
+	base += size;//每次映射到不同的页面
+	return (void *)(base-size);
 	//panic("mmio_map_region not implemented");
 }
 
@@ -976,18 +975,27 @@ check_kern_pgdir(void)
 // defined by the page directory 'pgdir'.  The hardware normally performs
 // this functionality for us!  We define our own version to help check
 // the check_kern_pgdir() function; it shouldn't be used elsewhere.
-
+int num = 0;
 static physaddr_t
 check_va2pa(pde_t *pgdir, uintptr_t va)
 {
 	pte_t *p;
 
 	pgdir = &pgdir[PDX(va)];
+	
 	if (!(*pgdir & PTE_P))
+	{
+
+		cprintf("va %x ,pgdir %x ,times %d, return %d, 1\n", va, pgdir, ++num, ~0);
 		return ~0;
+	}
 	p = (pte_t*) KADDR(PTE_ADDR(*pgdir));
 	if (!(p[PTX(va)] & PTE_P))
+	{
+		cprintf("va %x ,pgdir %x ,times %d, return %d, 2\n", va, pgdir, ++num, ~0);
 		return ~0;
+	}
+	cprintf("va %x ,pgdir %x ,times %d, return %x \n", va, pgdir, ++num, PTE_ADDR(p[PTX(va)]));
 	return PTE_ADDR(p[PTX(va)]);
 }
 
