@@ -23,3 +23,4 @@ kern/mpentry.S是运行在KERNBASE之上的，也就是里面的地址全是大�
 # 练习3
 ## mem_init_mp
 该函数是根据inc/memlayout.h将每个CPU堆栈映射在KSTACKTOP开始的区域。每个CPU的堆栈都留了KSTKSIZE大小，也就是8个PGSIZE的空间。同时来预留了KSTKGAP，也是8个PGSIZE大小的空间防止堆栈溢出时覆盖了下一个CPU的堆栈。
+ page fault happen in kernel mode!

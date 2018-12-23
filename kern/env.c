@@ -296,8 +296,8 @@ region_alloc(struct Env *e, void *va, size_t len)
 	uint32_t start,end;
 	start = ROUNDDOWN((uint32_t)va, PGSIZE);
 	end = ROUNDUP((uint32_t)(va + len), PGSIZE);
-	cprintf("start=%d \n",start);
-	cprintf("end=%d \n",end);
+	cprintf("start=%x \n",start);
+	cprintf("end=%x \n",end);
 
 	struct PageInfo *Page;
 	int r;
