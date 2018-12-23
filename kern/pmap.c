@@ -306,6 +306,13 @@ page_init(void)
 	size_t i;
 	//临界点是否等于可能存在问题
 	for (i = 1; i < npages; i++) {
+		//lab4
+		if (i == ROUNDUP(MPENTRY_PADDR, PGSIZE) / PGSIZE) {
+        	pages[i].pp_ref = 1;
+        	continue;
+    	}
+
+		
 	//  2) The rest of base memory
 		if(i < npages_basemem){
 			pages[i].pp_ref = 0;
@@ -328,6 +335,11 @@ page_init(void)
 			page_free_list = &pages[i];
 		}
 	}
+
+	//要在循环里判断，否者该项以及在page_free_list中
+	//i = ROUNDUP(MPENTRY_PADDR, PGSIZE) / PGSIZE;
+	//pages[i].pp_ref = 1;
+	//pages[i].pp_link = NULL;
 }
 
 //
@@ -668,7 +680,24 @@ mmio_map_region(physaddr_t pa, size_t size)
 	// Hint: The staff solution uses boot_map_region.
 	//
 	// Your code here:
-	panic("mmio_map_region not implemented");
+	size_t rounded_size = ROUNDUP(size, PGSIZE);
+
+    if (base + rounded_size > MMIOLIM) panic("overflow MMIOLIM");
+    boot_map_region(kern_pgdir, base, rounded_size, pa, PTE_W|PTE_PCD|PTE_PWT);
+    uintptr_t res_region_base = base;   
+    base += rounded_size;       
+    return (void *)res_region_base;
+
+	// size = ROUNDUP(size, PGSIZE);
+	// pa = ROUNDDOWN(pa, PGSIZE);
+	
+	// if(base + size > MMIOLIM)
+	// 	panic("MMIOLIM is not enough");
+
+	// boot_map_region(kern_pgdir, base, size, pa, PTE_PCD|PTE_PWT|PTE_W);
+	// base += size;//每次映射到不同的页面
+	// return (void *)(base-size);
+	//panic("mmio_map_region not implemented");
 }
 
 static uintptr_t user_mem_check_addr;

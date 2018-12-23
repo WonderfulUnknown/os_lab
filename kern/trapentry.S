@@ -3,8 +3,6 @@
 #include <inc/mmu.h>
 #include <inc/memlayout.h>
 #include <inc/trap.h>
-
-<<<<<<< HEAD
 #include <kern/picirq.h>
 
 
