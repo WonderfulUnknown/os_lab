@@ -211,7 +211,7 @@ mem_init(void)
 	// Your code goes here:
 	// Initialize the SMP-related parts of the memory map
 	mem_init_mp();
-	//boot_map_region(kern_pgdir, KERNBASE, 0xffffffff-KERNBASE, 0, PTE_W);
+	boot_map_region(kern_pgdir, KERNBASE, 0xffffffff-KERNBASE, 0, PTE_W);
 
 	// Check that the initial page directory has been set up correctly.
 	check_kern_pgdir();
@@ -264,7 +264,7 @@ mem_init_mp(void)
 	for(int i = 0;i < NCPU;i++)
 	{
 		kstacktop_i = KSTACKTOP - i * (KSTKSIZE + KSTKGAP);
-		boot_map_region(kern_pgdir, kstacktop_i, KSTKSIZE, PADDR(percpu_kstacks[i]), PTE_W|PTE_P);
+		boot_map_region(kern_pgdir, kstacktop_i - KSTKSIZE, KSTKSIZE, PADDR(percpu_kstacks[i]), PTE_W);
 	}
 }
 
@@ -364,7 +364,6 @@ struct PageInfo *
 page_alloc(int alloc_flags)
 {
 	// Fill this function in
-	//cprintf("page_alloc\r\n");
 	if(page_free_list == NULL)
 		return NULL;
 	else{
@@ -514,7 +513,7 @@ boot_map_region(pde_t *pgdir, uintptr_t va, size_t size, physaddr_t pa, int perm
 	// Fill this function in
 	pte_t *pte = NULL;
 	cprintf("Virtual Address %x mapped to Physical Address %x\n", va, pa);
-	for(int i = 0;i < PGNUM(size);i += PGSIZE){
+	for(int i = 0;i < size;i += PGSIZE){
 		pte = pgdir_walk(pgdir, (void *)va, 1);
 		*pte = (pa | perm | PTE_P);
 		va += PGSIZE;
@@ -693,7 +692,7 @@ mmio_map_region(physaddr_t pa, size_t size)
 	if(base + size > MMIOLIM)
 		panic("MMIOLIM is not enough");
 
-	boot_map_region(kern_pgdir, base, size, pa, PTE_PCD|PTE_PWT|PTE_W);
+	boot_map_region(kern_pgdir, base, size, pa, PTE_PCD | PTE_PWT | PTE_W | PTE_P);
 	base += size;//每次映射到不同的页面
 	return (void *)(base-size);
 	//panic("mmio_map_region not implemented");
@@ -975,27 +974,18 @@ check_kern_pgdir(void)
 // defined by the page directory 'pgdir'.  The hardware normally performs
 // this functionality for us!  We define our own version to help check
 // the check_kern_pgdir() function; it shouldn't be used elsewhere.
-int num = 0;
 static physaddr_t
 check_va2pa(pde_t *pgdir, uintptr_t va)
 {
 	pte_t *p;
 
 	pgdir = &pgdir[PDX(va)];
-	
-	if (!(*pgdir & PTE_P))
-	{
 
-		cprintf("va %x ,pgdir %x ,times %d, return %d, 1\n", va, pgdir, ++num, ~0);
+	if (!(*pgdir & PTE_P))
 		return ~0;
-	}
 	p = (pte_t*) KADDR(PTE_ADDR(*pgdir));
 	if (!(p[PTX(va)] & PTE_P))
-	{
-		cprintf("va %x ,pgdir %x ,times %d, return %d, 2\n", va, pgdir, ++num, ~0);
 		return ~0;
-	}
-	cprintf("va %x ,pgdir %x ,times %d, return %x \n", va, pgdir, ++num, PTE_ADDR(p[PTX(va)]));
 	return PTE_ADDR(p[PTX(va)]);
 }
 

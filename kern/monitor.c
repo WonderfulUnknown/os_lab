@@ -65,18 +65,18 @@ mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 	uint32_t *ebp,eip;
 
 	ebp = (uint32_t *)read_ebp();
-	
+
 	cprintf("Stack backtrace:\r\n");
-    	while (ebp!=0)
-    	{
-	eip = ebp[1];
-       	cprintf("  ebp %08x  eip %08x  args %08x %08x %08x %08x %08x\r\n", ebp, eip, ebp[2], ebp[3], ebp[4], ebp[5], ebp[6]);//%08x 补0输出8位16进制数
-	debuginfo_eip((uintptr_t)eip,&info);
-	cprintf("%s:%d", info.eip_file, info.eip_line);
-        cprintf(": %.*s+%d\n", info.eip_fn_namelen, info.eip_fn_name,info.eip_fn_addr);
-   	ebp = (uint32_t *)ebp[0];
-    	}
-    	return 0;
+	while (ebp != 0)
+	{
+		eip = ebp[1];
+		cprintf("  ebp %08x  eip %08x  args %08x %08x %08x %08x %08x\r\n", ebp, eip, ebp[2], ebp[3], ebp[4], ebp[5], ebp[6]); //%08x 补0输出8位16进制数
+		debuginfo_eip((uintptr_t)eip, &info);
+		cprintf("%s:%d", info.eip_file, info.eip_line);
+		cprintf(": %.*s+%d\n", info.eip_fn_namelen, info.eip_fn_name, info.eip_fn_addr);
+		ebp = (uint32_t *)ebp[0];
+	}
+	return 0;
 }
 
 

@@ -23,7 +23,3 @@ kern/mpentry.S是运行在KERNBASE之上的，也就是里面的地址全是大�
 # 练习3
 ## mem_init_mp
 该函数是根据inc/memlayout.h将每个CPU堆栈映射在KSTACKTOP开始的区域。每个CPU的堆栈都留了KSTKSIZE大小，也就是8个PGSIZE的空间。同时来预留了KSTKGAP，也是8个PGSIZE大小的空间防止堆栈溢出时覆盖了下一个CPU的堆栈。
-## debug boot_map_region
-原本写的映射循环是
-`for(int i = 0;i < size;i += PGSIZE)`
-提示`assertion failed: check_va2pa(pgdir, KERNBASE + i) == i`，才发现原本写的size并不是以页为单位= =，改为`for(int i = 0;i < PGNUM(size);i += PGSIZE)`。
