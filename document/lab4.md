@@ -153,7 +153,76 @@ xchg(volatile uint32_t *addr, uint32_t newval)
 ## 问题 2
 >看起来使用全局内核锁能够保证同一时段内只有一个 CPU 能够运行内核代码。既然这样，我们为什么还需要为每个 CPU 分配不同的内核堆栈呢？请描述一个即使我们使用了全局内核锁，共享内核堆栈仍会导致错误的情形。
 
-虽然全局内核锁能够保证同时只能有一个CPU运行在内核模式下，看起来只有一个CPU能使用到内核堆栈。但是如果这时其他CPU的代码触发了中断机制，根据lab3的中断实现，我们可以知道，硬件会自动push 将Trapframe结构中的所有数据压入栈中，虽然这个CPU此时还未能进入内核态，但是它已经对共享的内核堆栈造成了影响。
+虽然全局内核锁能够保证同时只能有一个CPU运行在内核模式下，看起来只有一个CPU能使用到内核堆栈。但是如果这时其他CPU的代码触发了中断机制，根据lab3的中断实现，我们可以知道，进程进入内核前会自动push将Trapframe结构中的所有数据压入内核栈中，虽然这个CPU此时还未能进入内核态，但是它已经对共享的内核堆栈造成了影响。
 # 练习6
-## JOS 轮转调度
-JOS的轮转调度思想就是当env[i]进程来调用sched_yield()函数的时候，表示进程i要让出CPU了，此时，系统会从i开始，不停的往下寻找状态为runnable的进程，然后执行那个进程。如果遍历了所有的进程队列，发现没有进程满足运行条件，此时分两种情况，若原进程满足运行条件，即状态是runnable,则运行原进程，若原进程不满足运行条件，即原进程被阻塞或者被杀死，则调用 sched_halt()， 让CPU停止工作，直到下次时钟中断，再重新执行上面的过程。
+## sched_yield
+实现多CPU的情况下对进程轮转调度
+## JOS轮转调度
+JOS轮转调度思想就是当env[i]进程来调用sched_yield()函数的时候，表示进程i要让出CPU了，此时，系统会从i开始，不停的往下寻找状态为runnable的进程，然后执行那个进程。如果遍历了所有的进程队列，发现没有进程满足运行条件，此时分两种情况，若原进程满足运行条件，即状态是runnable,则运行原进程，若原进程不满足运行条件，即原进程被阻塞或者被杀死，则调用 sched_halt()， 让CPU停止工作，直到下次时钟中断，再重新执行上面的过程。
+>make run-yield CPUS=2
+## 问题 3
+>在你实现的 env_run() 中你应当调用了 lcr3()。在调用 lcr3() 之前和之后，你的代码应当都在引用 变量 e，就是 env_run() 所需要的参数。 在装载 %cr3 寄存器之后， MMU 使用的地址上下文立刻发生改变，但是处在之前地址上下文的虚拟地址（比如说 e ）却还能够正常工作，为什么 e 在地址切换前后都可以被正确地解引用呢？
+
+lab3中的函数env_setup_vm()，每次进程创建的时候页目录项都是直接拷贝内核的页目录项，因此所有用户环境的页目录表中和内核相关的页目录项都是一样的。进程ENV的地址e存储在内核栈中，所以尽管上下文切换页表项替换，但是e在上下文的页表项中地址映射到同一物理地址上。
+## 问题 4
+>无论何时，内核在从一个进程切换到另一个进程时，它应当确保旧的寄存器被保存，以使得以后能够恢复。为什么？在哪里实现的呢？
+
+因为在进程进入内核之前，会自动push将Trapframe结构中的所有数据压入内核栈中，而当从内核态回到用户态时，会恢复之前保存的信息。
+保存发生在kern/trapentry.S，恢复发生在kern/env.c。
+>保存
+
+```
+#define TRAPHANDLER(name, num)						\
+	.globl name;		/* define global symbol for 'name' */	\
+	.type name, @function;	/* symbol type is function */		\
+	.align 2;		/* align function definition */		\
+	name:			/* function starts here */		\
+	pushl $(num);							\
+	jmp _alltraps
+
+/* Use TRAPHANDLER_NOEC for traps where the CPU doesn't push an error code.
+ * It pushes a 0 in place of the error code, so the trap frame has the same
+ * format in either case.
+ */
+#define TRAPHANDLER_NOEC(name, num)					\
+	.globl name;							\
+	.type name, @function;						\
+	.align 2;							\
+	name:								\
+	pushl $0;							\
+	pushl $(num);							\
+	jmp _alltraps
+
+_alltraps:
+	pushl %ds
+	pushl %es
+	pushal
+
+	mov $GD_KD,%eax
+	mov %eax,%ds
+	mov %eax,%es
+	
+	pushl %esp  //压入trap()的参数tf，%esp指向Trapframe结构的起始地址
+	call trap
+```
+>恢复
+
+```
+void
+env_pop_tf(struct Trapframe *tf)
+{
+    // Record the CPU we are running on for user-space debugging
+    curenv->env_cpunum = cpunum();
+
+    asm volatile(
+        "\tmovl %0,%%esp\n"    // 恢复栈顶指针
+        "\tpopal\n"    // 恢复其他寄存器
+        "\tpopl %%es\n"    // 恢复段寄存器
+        "\tpopl %%ds\n"
+        "\taddl $0x8,%%esp\n" /* skip tf_trapno and tf_errcode */
+        "\tiret\n"
+        : : "g" (tf) : "memory");
+    panic("iret failed");  /* mostly to placate the compiler */
+}
+```
+## 练习7

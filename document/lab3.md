@@ -14,7 +14,7 @@ extern struct Env *envs;		// All environments
 ## env_setup_vm
 为新的进程分配一个页目录，并初始化新进程的地址空间对应的内核部分。
 所有envs结构的虚拟地址都是在UTOP上的。
-UTOP之上env_pgdir可以拷贝kern_pgdir, 因为所有用户环境的页目录表中和操作系统相关的页目录项都是一样的，但是UVPT处的env_pgdir需要单独设置成用户只读。
+UTOP之上env_pgdir可以拷贝kern_pgdir, 因此所有用户环境的页目录表中和操作系统相关的页目录项都是一样的，但是UVPT处的env_pgdir需要单独设置成用户只读。
 >每个用户进程都需要共享内核空间，所以对于用户进程而言，在UTOP以上的部分，和系统内核的空间是完全一样的。
 
 ### memcpy

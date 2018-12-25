@@ -63,6 +63,8 @@ i386_init(void)
 #endif // TEST*
 
 	// Schedule and run the first user environment!
+	ENV_CREATE(user_yield, ENV_TYPE_USER);
+    ENV_CREATE(user_yield, ENV_TYPE_USER);
 	sched_yield();
 }
 

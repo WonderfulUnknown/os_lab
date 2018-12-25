@@ -565,7 +565,7 @@ env_run(struct Env *e)
 	curenv = e;
 	curenv->env_status = ENV_RUNNING;
 	curenv->env_runs++;
-	cprintf("%o \n",(physaddr_t)curenv->env_pgdir);
+	//cprintf("%o \n",(physaddr_t)curenv->env_pgdir);
 
 	//lab4 unlock
 	unlock_kernel();

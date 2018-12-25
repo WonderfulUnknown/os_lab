@@ -146,6 +146,10 @@ trap_init_percpu(void)
 	// LAB 4: Your code here:
 	// Setup a TSS so that we get the right stack
 	// when we trap to the kernel.
+	// struct Taskstate* this_ts = &thiscpu->cpu_ts;
+    // this_ts->ts_esp0 = KSTACKTOP - thiscpu->cpu_id*(KSTKSIZE + KSTKGAP);
+    // this_ts->ts_ss0 = GD_KD;
+    // this_ts->ts_iomb = sizeof(struct Taskstate);
 	thiscpu->cpu_ts.ts_esp0 = KSTACKTOP - thiscpu->cpu_id*(KSTKSIZE + KSTKGAP);
 	thiscpu->cpu_ts.ts_ss0 = GD_KD;
 	//ts.ts_esp0 = KSTACKTOP;
@@ -219,27 +223,26 @@ trap_dispatch(struct Trapframe *tf)
 	{
 	case T_PGFLT:
 		page_fault_handler(tf);
-		break;
+		return;
 	case T_BRKPT:
 		monitor(tf);
-		break;
+		return;
 	case T_SYSCALL:
 		tf->tf_regs.reg_eax = syscall(tf->tf_regs.reg_eax, 
-		tf->tf_regs.reg_edx, tf->tf_regs.reg_ecx, tf->tf_regs.reg_ecx, 
+		tf->tf_regs.reg_edx, tf->tf_regs.reg_ecx, tf->tf_regs.reg_ebx, 
 		tf->tf_regs.reg_edi, tf->tf_regs.reg_esi);
-		break;
-	default:
-		// Unexpected trap: The user process or the kernel has a bug.
-		print_trapframe(tf);
-		if (tf->tf_cs == GD_KT)
-			panic("unhandled trap in kernel");
-		else
-		{
-			env_destroy(curenv);
-			return;
-		}
+		return;
+	// default:
+	// 	// Unexpected trap: The user process or the kernel has a bug.
+	// 	print_trapframe(tf);
+	// 	if (tf->tf_cs == GD_KT)
+	// 		panic("unhandled trap in kernel");
+	// 	else
+	// 	{
+	// 		env_destroy(curenv);
+	// 		return;
+	// 	}
 	}
-
 	// Handle spurious interrupts
 	// The hardware sometimes raises these because of noise on the
 	// IRQ line or other reasons. We don't care.
