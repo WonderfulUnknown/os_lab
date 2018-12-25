@@ -117,9 +117,9 @@ mp_main(void)
 	//
 	// Your code here:
 	lock_kernel();
-	sched_yield();//开始在这个AP上运行进程
+	sched_yield();//选择进程运行
 	// Remove this after you finish Exercise 4
-	for (;;);
+	//for (;;);
 }
 
 /*

@@ -272,12 +272,11 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 	// LAB 3: Your code here.
 
 	//panic("syscall not implemented");
-	int ret;
+	int ret = 0;
 
 	switch (syscallno) {
 	case SYS_cputs:
 		sys_cputs((const char*)a1,(size_t)a2);
-		ret = 0;//其他函数都return 0
 		break;
 	case SYS_cgetc:
 		ret = sys_cgetc();
@@ -287,6 +286,9 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 		break;
 	case SYS_getenvid:
 		ret = sys_getenvid();
+		break;
+	case SYS_yield:
+		sys_yield();
 		break;
 	default:
 		return -E_NO_SYS;
