@@ -1243,7 +1243,7 @@ f01007ba:	e8 d9 01 00 00       	call   f0100998 <cprintf>
 f01007bf:	83 c4 10             	add    $0x10,%esp
     	{
 	eip = ebp[1];
-       	cprintf("  ebp %08x  eip %08x  args %08x %08x %08x %08x %08x\r\n", ebp, eip, ebp[2], ebp[3], ebp[4], ebp[5], ebp[6]);
+       	cprintf("  ebp %08x  eip %08x  args %08x %08x %08x %08x %08x\r\n", ebp, eip, ebp[2], ebp[3], ebp[4], ebp[5], ebp[6]);//%08x 补0输出8位16进制数
 	debuginfo_eip((uintptr_t)eip,&info);
 f01007c2:	8d 7d d0             	lea    -0x30(%ebp),%edi
 	uint32_t *ebp,eip;
@@ -1256,7 +1256,7 @@ f01007c5:	eb 53                	jmp    f010081a <mon_backtrace+0x70>
     	{
 	eip = ebp[1];
 f01007c7:	8b 73 04             	mov    0x4(%ebx),%esi
-       	cprintf("  ebp %08x  eip %08x  args %08x %08x %08x %08x %08x\r\n", ebp, eip, ebp[2], ebp[3], ebp[4], ebp[5], ebp[6]);
+       	cprintf("  ebp %08x  eip %08x  args %08x %08x %08x %08x %08x\r\n", ebp, eip, ebp[2], ebp[3], ebp[4], ebp[5], ebp[6]);//%08x 补0输出8位16进制数
 f01007ca:	ff 73 18             	pushl  0x18(%ebx)
 f01007cd:	ff 73 14             	pushl  0x14(%ebx)
 f01007d0:	ff 73 10             	pushl  0x10(%ebx)
