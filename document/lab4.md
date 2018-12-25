@@ -225,4 +225,31 @@ env_pop_tf(struct Trapframe *tf)
     panic("iret failed");  /* mostly to placate the compiler */
 }
 ```
-## 练习7
+# 练习7
+## sys_exofork
+该系统调用创建一个几乎完全空白的新进程：它的用户地址空间没有内存映射，也不可以运行。这个新的进程拥有和创建它的父进程（调用这一方法的进程）一样的寄存器状态。在父进程中，sys_exofork 会返回刚刚创建的新进程的 envid_t（如果进程分配失败，返回一个负的错误代码）。
+>需要注意的是如何让子进程返回0
+
+sys_exofork()的定义与实现在 inc/lib.h 中
+```
+// This must be inlined.  Exercise for reader: why?
+static __inline envid_t __attribute__((always_inline))
+sys_exofork(void)
+{
+	envid_t ret;
+	__asm __volatile("int %2"
+		: "=a" (ret)
+		: "a" (SYS_exofork),
+		  "i" (T_SYSCALL)
+	);
+	return ret;
+}
+```
+通过这段内联汇编代码可以得知sys_exofork的返回值存在eax中,根据 kern/trap.c 中的 trap_dispatch() 函数，这个返回值仅仅是存放在了父进程的 trapframe 中，还没有返回。而是在返回用户态的时候，即在 env_run() 中调用 env_pop_tf() 时，才把 trapframe 中的值赋值给各个寄存器。这时候 lib/syscall.c 中的函数 syscall() 才获得真正的返回值。因此，在这里对子进程 trapframe 的修改，可以使得子进程返回0。
+## sys_env_set_status
+将一个进程的状态设置为 ENV_RUNNABLE 或 ENV_NOT_RUNNABLE。通常用来在新创建的进程的地址空间和寄存器状态已经初始化完毕后将它标记为就绪状态。
+注意无论何时调用 envid2env()，都应该把checkperm 参数赋为1。
+## sys_page_alloc
+分配一个物理内存页面，并将它映射在给定进程虚拟地址空间的给定虚拟地址上。
+## sys_page_map
+从一个进程的地址空间拷贝一个页的映射 (不是页的内容) 到另一个进程的地址空间，新进程和旧进程的映射应当指向同一个物理内存区域，使两个进程得以共享内存。
