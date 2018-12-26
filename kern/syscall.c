@@ -164,25 +164,31 @@ sys_page_alloc(envid_t envid, void *va, int perm)
 
 	// LAB 4: Your code here.
 	struct Env *e;
-	if(envid2env(envid, &e, 1) < 0)
+	int ret = envid2env(envid, &e, 1);
+	if(ret < 0)
 		return -E_BAD_ENV;
 
 	if(va >= (void*)UTOP || va != ROUNDDOWN(va, PGSIZE))
 		return -E_INVAL;
-	if ((perm & (PTE_U|PTE_P)) != (PTE_U|PTE_P)) 
+
+	int p = PTE_U | PTE_P;
+	if ((perm & p) != p) 
 		return -E_INVAL;
-    if ((perm & (PTE_U|PTE_P|PTE_AVAIL|PTE_W)) != (PTE_U|PTE_P|PTE_AVAIL|PTE_W))
+	//PTE_AVAIL | PTE_W may or may not be set, but no other bits may be set.
+	p = PTE_U | PTE_P | PTE_AVAIL | PTE_W;
+	if ((perm & ~p) != 0) 
 		return -E_INVAL;
 
 	struct PageInfo *page;
 	page = page_alloc(1);
 	if(!page)
 		return -E_NO_MEM;
-	int ret = page_insert(e->env_pgdir, page, va, perm);
-	if (ret) 
+		
+	ret = page_insert(e->env_pgdir, page, va, perm);
+	if (ret < 0) 
 	{
         page_free(page);
-        return ret;
+        return -E_NO_MEM;
     }
 	return 0;
 	//panic("sys_page_alloc not implemented");
@@ -231,9 +237,11 @@ sys_page_map(envid_t srcenvid, void *srcva,
     if (!page) 
 		return -E_INVAL;
 	
-	if ((perm & (PTE_U|PTE_P)) != (PTE_U|PTE_P)) 
+	int p = PTE_U | PTE_P;
+	if ((perm & p) != p) 
 		return -E_INVAL;
-    if ((perm & (PTE_U|PTE_P|PTE_AVAIL|PTE_W)) != (PTE_U|PTE_P|PTE_AVAIL|PTE_W))
+	p = PTE_U | PTE_P | PTE_AVAIL | PTE_W;
+	if ((perm & ~p) != 0) 
 		return -E_INVAL;
 	
 	if (((*pte & PTE_W) == 0) && (perm & PTE_W) == 1) 
@@ -360,6 +368,21 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 	case SYS_yield:
 		sys_yield();
 		break;
+	case SYS_exofork:
+        ret = (int)sys_exofork();
+        break;
+    case SYS_env_set_status:
+        ret = sys_env_set_status((envid_t)a1, (int)a2);
+        break;
+    case SYS_page_alloc:
+        ret = sys_page_alloc((envid_t)a1, (void *)a2, (int)a3);
+		break;
+    case SYS_page_map:
+        ret = sys_page_map((envid_t)a1, (void *)a2, (envid_t)a3, (void*)a4, (int)a5);
+        break;
+    case SYS_page_unmap:
+        ret = sys_page_unmap((envid_t)a1, (void *)a2);
+        break;
 	default:
 		return -E_NO_SYS;
 	}

@@ -253,3 +253,8 @@ sys_exofork(void)
 分配一个物理内存页面，并将它映射在给定进程虚拟地址空间的给定虚拟地址上。
 ## sys_page_map
 从一个进程的地址空间拷贝一个页的映射 (不是页的内容) 到另一个进程的地址空间，新进程和旧进程的映射应当指向同一个物理内存区域，使两个进程得以共享内存。
+
+>最后需要记得在syscall中添加本练习中实现的系统调用
+# make grade PartA
+ENV_CREATE(user_yield, ENV_TYPE_USER);
+只能写在else里，写在endif中不通过
