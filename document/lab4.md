@@ -255,6 +255,62 @@ sys_exofork(void)
 从一个进程的地址空间拷贝一个页的映射 (不是页的内容) 到另一个进程的地址空间，新进程和旧进程的映射应当指向同一个物理内存区域，使两个进程得以共享内存。
 
 >最后需要记得在syscall中添加本练习中实现的系统调用
-# make grade PartA
+# make grade PartA && #if defined(TEST)
 ENV_CREATE(user_yield, ENV_TYPE_USER);
-只能写在else里，写在endif中不通过
+只能写在#else里，写在#endif中不能通过测试
+
+最后写个实验的总结，整个实验在干些什么，最好复习的时候能把之前的补上
+# 练习8
+## 写时拷贝
+父进程将自己的页目录项和页表项复制给子进程，这样父进程和子进程就能访问相同的内容。并且将复制的页权限标记为只读，当其中某一个执行写操作时，发生缺页中断，内核就为缺页的进程复制这一物理页。这样既能做到地址空间隔离，又能节省了大量的拷贝工作。
+## sys_env_set_pgfault_upcall
+Env结构体中用变量env_pgfault_upcall来记录缺页处理函数入口。
+# 练习9
+## JOS异常堆栈
+JOS 用户异常堆栈大小也是一个页面，栈顶被定义在虚拟地址 UXSTACKTOP 位置，所以用户异常堆栈可用的字节是 [UXSTACKTOP-PGSIZE, UXSTACKTOP-1]。
+### JOS堆栈（目前）
+>  
+[KSTACKTOP, KSTACKTOP-KSTKSIZE]
+内核态系统栈
+[UXSTACKTOP, UXSTACKTOP - PGSIZE]
+用户态错误处理栈
+[USTACKTOP, UTEXT]
+用户态运行栈
+
+内核态系统栈是运行内核相关程序的栈，在有中断被触发之后，CPU会将栈自动切换到内核栈上来，而内核栈的设置是在kern/trap.c的trap_init_percpu()中设置的。
+## page_fault_handler
+这次处理的是缺页发生在用户空间的情况。
+首先进入到内核，栈指针esp从用户运行栈切换到内核栈，进行中断处理分发，进入到page_fault_handler()，当确认是用户程序触发的page fault的时候(如果是内核触发直接触发panic了)，为其在用户错误栈里分配UTrapframe大小的空间。把栈指针esp切换到用户错误栈，运行响应的用户中断处理程序中断处理程序可能会触发另外一个同类型的中断，这个时候就会产生递归式的处理。处理完成之后，返回到用户运行栈。 
+### UTrapframe
+在trap.h中定义
+```
+struct UTrapframe {
+	/* information about the fault */
+	uint32_t utf_fault_va;	/* va for T_PGFLT, 0 otherwise */
+	uint32_t utf_err;
+	/* trap-time return state */
+	struct PushRegs utf_regs;
+	uintptr_t utf_eip;
+	uint32_t utf_eflags;
+	/* the trap-time stack to return to */
+	uintptr_t utf_esp;
+} __attribute__((packed));
+```
+### esp && ebp && eip
+ESP：栈指针寄存器(extended stack pointer)，存放着一个指针，指向系统栈最上面一个栈的栈顶。
+EBP：基址指针寄存器(extended base pointer)，存放着一个指针，指向系统栈最上面一个栈的底部。
+eip：寄存器存放CPU将要执行的下一条指令存放的内存地址，当CPU执行完当前的指令后，从EIP寄存器中读取下一条指令，然后继续执行。
+> x86是字节寻址= =
+
+## 问题
+>如果用户进程的异常堆栈已经没有空间了会发生什么？
+
+在 inc/memlayout.h 中可以找到：
+```
+// Top of one-page user exception stack
+#define UXSTACKTOP  UTOP
+// Next page left invalid to guard against exception stack overflow;
+```
+![](/document/picture/7.png)
+可知如果没有空间的时候会访问到空白的一页，访问无效，避免了堆栈溢出。
+# 练习10

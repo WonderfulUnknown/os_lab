@@ -114,8 +114,9 @@ sys_env_set_status(envid_t envid, int status)
 
 	// LAB 4: Your code here.
 	struct Env *e;
-	if(envid2env(envid, &e,1) < 0)
-		return -E_BAD_ENV;
+	int ret = envid2env(envid, &e, 1);
+	if(ret)
+		return ret;
 	e->env_status = status;
 	return 0;
 	//panic("sys_env_set_status not implemented");
@@ -133,7 +134,14 @@ static int
 sys_env_set_pgfault_upcall(envid_t envid, void *func)
 {
 	// LAB 4: Your code here.
-	panic("sys_env_set_pgfault_upcall not implemented");
+	struct Env *e;
+	int ret = envid2env(envid, &e, 1);
+	if(ret)
+		return ret;
+
+	e->env_pgfault_upcall = func;
+    return 0;
+	//panic("sys_env_set_pgfault_upcall not implemented");
 }
 
 // Allocate a page of memory and map it at 'va' with permission
@@ -166,7 +174,7 @@ sys_page_alloc(envid_t envid, void *va, int perm)
 	struct Env *e;
 	int ret = envid2env(envid, &e, 1);
 	if(ret < 0)
-		return -E_BAD_ENV;
+		return ret;
 
 	if(va >= (void*)UTOP || va != ROUNDDOWN(va, PGSIZE))
 		return -E_INVAL;

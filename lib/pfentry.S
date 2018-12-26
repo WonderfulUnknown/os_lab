@@ -35,7 +35,7 @@ _pgfault_upcall:
 	// Call the C page fault handler.
 	pushl %esp			// function argument: pointer to UTF
 	movl _pgfault_handler, %eax
-	call *%eax
+	call *%eax 
 	addl $4, %esp			// pop function argument
 	
 	// Now the C page fault handler has returned and you must return
@@ -65,7 +65,7 @@ _pgfault_upcall:
 	// ways as registers become unavailable as scratch space.
 	//
 	// LAB 4: Your code here.
-
+	
 	// Restore the trap-time registers.  After you do this, you
 	// can no longer modify any general-purpose registers.
 	// LAB 4: Your code here.

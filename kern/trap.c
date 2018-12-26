@@ -358,7 +358,29 @@ page_fault_handler(struct Trapframe *tf)
 	//   (the 'tf' variable points at 'curenv->env_tf').
 
 	// LAB 4: Your code here.
+	if(curenv->env_pgfault_upcall)
+	{
+		uint32_t stacktop;
+		//递归调用时，需要先压入一个空的32位长度
+		if(tf->tf_esp >= UXSTACKTOP-PGSIZE && tf->tf_esp < UXSTACKTOP)
+			stacktop = tf->tf_esp - 4 - sizeof(struct UTrapframe);
+		else
+			stacktop = tf->tf_esp - sizeof(struct UTrapframe);
+		user_mem_assert(curenv, stacktop, sizeof(struct UTrapframe), PTE_U | PTE_P);
+		struct UTrapframe *utf = (struct UTrapframe *)stacktop;
+		//根据文档给的结构依次压栈
+		utf->utf_fault_va = fault_va;
+		utf->utf_err = tf->tf_err;
+		utf->utf_regs = tf->tf_regs;
+		utf->utf_eip = tf->tf_eip;
+		utf->utf_eflags = tf->tf_eflags;
+		utf->utf_esp = tf->tf_esp;
 
+		//修改eip返回用户进入异常处理前的地址，修改esp完成栈的切换
+        tf->tf_eip = (uintptr_t)curenv->env_pgfault_upcall;
+        tf->tf_esp = (uintptr_t)stacktop;
+        env_run(curenv);
+	}
 	// Destroy the environment that caused the fault.
 	cprintf("[%08x] user fault va %08x ip %08x\n",
 		curenv->env_id, fault_va, tf->tf_eip);
