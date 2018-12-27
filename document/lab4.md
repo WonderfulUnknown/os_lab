@@ -253,13 +253,11 @@ sys_exofork(void)
 分配一个物理内存页面，并将它映射在给定进程虚拟地址空间的给定虚拟地址上。
 ## sys_page_map
 从一个进程的地址空间拷贝一个页的映射 (不是页的内容) 到另一个进程的地址空间，新进程和旧进程的映射应当指向同一个物理内存区域，使两个进程得以共享内存。
-
 >最后需要记得在syscall中添加本练习中实现的系统调用
+
 # make grade PartA && #if defined(TEST)
 ENV_CREATE(user_yield, ENV_TYPE_USER);
 只能写在#else里，写在#endif中不能通过测试
-
-最后写个实验的总结，整个实验在干些什么，最好复习的时候能把之前的补上
 # 练习8
 ## 写时拷贝
 父进程将自己的页目录项和页表项复制给子进程，这样父进程和子进程就能访问相同的内容。并且将复制的页权限标记为只读，当其中某一个执行写操作时，发生缺页中断，内核就为缺页的进程复制这一物理页。这样既能做到地址空间隔离，又能节省了大量的拷贝工作。
@@ -273,13 +271,12 @@ Env结构体中用变量env_pgfault_upcall来记录缺页处理函数入口。
 
 而如果在异常处理程序中发生了也错误，那么栈的切换是
 >异常栈—>内核栈—>异常栈 
-## JOS异常堆栈
-JOS 用户异常堆栈大小也是一个页面，栈顶被定义在虚拟地址 UXSTACKTOP 位置，所以用户异常堆栈可用的字节是 [UXSTACKTOP-PGSIZE, UXSTACKTOP-1]。
-### JOS堆栈（目前）
+
+## JOS堆栈（目前）
 >  
 [KSTACKTOP, KSTACKTOP-KSTKSIZE]
 内核态系统栈
-[UXSTACKTOP, UXSTACKTOP - PGSIZE]
+[UXSTACKTOP-PGSIZE, UXSTACKTOP-1]
 用户态错误处理栈
 [USTACKTOP, UTEXT]
 用户态运行栈
@@ -304,8 +301,8 @@ struct UTrapframe {
 ```
 相比于Trapframe，多了utf_fault_va来记录触发错误的内存地址。同时还少了es,ds,ss等，因为从用户态栈切换到异常栈，或者从异常栈再切换回去，实际上都是一个用户进程，所以不涉及到段的切换，不用记录。
 ### esp && ebp && eip
-ESP：栈指针寄存器(extended stack pointer)，存放着一个指针，指向系统栈最上面一个栈的栈顶。
-EBP：基址指针寄存器(extended base pointer)，存放着一个指针，指向系统栈最上面一个栈的底部。
+esp：栈指针寄存器(extended stack pointer)，存放着一个指针，指向系统栈最上面一个栈的栈顶。
+ebp：基址指针寄存器(extended base pointer)，存放着一个指针，指向系统栈最上面一个栈的底部。
 eip：寄存器存放CPU将要执行的下一条指令存放的内存地址，当CPU执行完当前的指令后，从EIP寄存器中读取下一条指令，然后继续执行。
 > x86是字节寻址= =
 
@@ -328,12 +325,18 @@ AT&T汇编语法参考了博客[https://www.cnblogs.com/orlion/p/5765339.html](h
 ### *
 直接寻址符号，就是直接给PC赋值某个地址，而不是加偏移量。
 ## pfentry.S
-因此可知已有的代码先把esp当前的值压入栈，然后把_pgfault_handler的地址传给eax寄存器，然后用*直接跳转到eax寄存器里面的值，也就是直接跳转到_pgfault_handler（不是相对地址）。根据前面注释可知，全局变量_pgfault_handler指向了相应的页面错误处理函数，也就是练习9中实现的page_fault_handler函数。最后把一开始压入栈的esp，也就是指向UTF结构的指针弹出栈。这样避免了esp经过一次函数调用后被破坏。
+已有的代码先把esp当前的值压入栈，然后把_pgfault_handler的地址传给eax寄存器，然后用*直接跳转到eax寄存器里面的值，也就是直接跳转到_pgfault_handler（不是相对地址）。根据前面注释可知，全局变量_pgfault_handler指向了user文件中的handler函数（通过自己给定不同的handler函数用户自己选择了如何处理缺页异常）。
+>最后把fault_va弹出栈。(其实只是移动esp指针，使得fault_va不在栈中而已)
+>感觉没必要弹出fault_va?
+
 然后需要用汇编语言实现：当从用户定义的处理函数返回之后，从用户错误栈直接返回到用户运行栈。
 # 练习11
 ## set_pgfault_handler()
 函数使得用户可以自己选择缺页异常的处理方式。
->handler是传入的用户自定义页错误处理函数指针。
+handler传入用户自定义页错误处理函数指针。
 _pgfault_upcall是一个全局变量，在lib/pfentry.S中完成的初始化。它是页错误处理的总入口，页错误除了运行page_fault_handler，还需要切换回正常栈。
-_pgfault_handler被赋值为handler，会在 _pgfault_upcall 中被调用，是页错误处理的一部分。
+_pgfault_handler被赋值为handler，会在 _pgfault_upcall中被调用，是页错误处理的一部分。
+>该函数是在lib中，获取当前进程id需要通过sys_getenvid()来获取
 
+缺页异常处理逻辑
+![](/document/picture/缺页异常处理逻辑.png)

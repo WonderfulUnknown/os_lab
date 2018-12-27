@@ -366,7 +366,7 @@ page_fault_handler(struct Trapframe *tf)
 			esp = tf->tf_esp - 4 - sizeof(struct UTrapframe);
 		else
 			esp = tf->tf_esp - sizeof(struct UTrapframe);
-		user_mem_assert(curenv, esp, sizeof(struct UTrapframe), PTE_U | PTE_P);
+		user_mem_assert(curenv, (void *)esp, sizeof(struct UTrapframe), PTE_U | PTE_P);
 		struct UTrapframe *utf = (struct UTrapframe *)esp;
 		//根据文档给的结构依次压栈
 		utf->utf_fault_va = fault_va;

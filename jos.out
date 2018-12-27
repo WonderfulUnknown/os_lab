@@ -1,9 +1,9 @@
 + ld obj/kern/kernel
 + mk obj/kern/kernel.img
 
-(process:5198): GLib-WARNING **: /build/glib2.0-7ZsPUq/glib2.0-2.48.2/./glib/gmem.c:483: custom memory allocation vtable not supported
+(process:13559): GLib-WARNING **: /build/glib2.0-7ZsPUq/glib2.0-2.48.2/./glib/gmem.c:483: custom memory allocation vtable not supported
 
-(process:5200): GLib-WARNING **: /build/glib2.0-7ZsPUq/glib2.0-2.48.2/./glib/gmem.c:483: custom memory allocation vtable not supported
+(process:13561): GLib-WARNING **: /build/glib2.0-7ZsPUq/glib2.0-2.48.2/./glib/gmem.c:483: custom memory allocation vtable not supported
 6828 decimal is 15254 octal!
 Physical memory: 66556K available, base = 640K, extended = 65532K
 check_page_alloc() succeeded!
@@ -18,4 +18,4 @@ SMP: CPU 3 starting
 [00000000] new env 00001000
 kernel panic on CPU 1 at kern/trap.c:274: assertion failed: !(read_eflags() & FL_IF)
 Welcome to the JOS kernel monitor!
-qemu: terminating on signal 15 from pid 5122
+Type 'help' for a list of commands.

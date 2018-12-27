@@ -140,6 +140,7 @@ sys_env_set_pgfault_upcall(envid_t envid, void *func)
 		return ret;
 
 	e->env_pgfault_upcall = func;
+	//user_mem_assert(e, func, 4, 0);//ppt
     return 0;
 	//panic("sys_env_set_pgfault_upcall not implemented");
 }
@@ -391,9 +392,14 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
     case SYS_page_unmap:
         ret = sys_page_unmap((envid_t)a1, (void *)a2);
         break;
+	case SYS_env_set_pgfault_upcall:
+		ret = sys_env_set_pgfault_upcall((envid_t)a1, (void *)a2);
+		break;
 	default:
 		return -E_NO_SYS;
 	}
+	//cprintf("syscall is %d\n",syscallno);
+	panic("syscall is %d\n",syscallno);
 	return ret;
 }
 

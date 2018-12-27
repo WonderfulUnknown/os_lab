@@ -26,7 +26,8 @@ set_pgfault_handler(void (*handler)(struct UTrapframe *utf))
 {
 	int r;
 
-	if (_pgfault_handler == 0) {
+	if (_pgfault_handler == 0) 
+	{
 		// First time through!
 		// LAB 4: Your code here.
 		envid_t env = sys_getenvid();
@@ -35,10 +36,10 @@ set_pgfault_handler(void (*handler)(struct UTrapframe *utf))
         if (r < 0) 
             panic("set_pgfault_handler:sys_page_alloc failed");
 		//系统调用，设置进程的env_pgfault_upcall属性
-        sys_env_set_pgfault_upcall(0, _pgfault_upcall);     
+        sys_env_set_pgfault_upcall(env, _pgfault_upcall);
 		//panic("set_pgfault_handler not implemented");
 	}
-
 	// Save handler pointer for assembly to call.
 	_pgfault_handler = handler;
+	panic("set_pgfault_handler:success");
 }
