@@ -148,7 +148,7 @@ trap_init_percpu(void)
 	// when we trap to the kernel.
 	thiscpu->cpu_ts.ts_esp0 = KSTACKTOP - thiscpu->cpu_id*(KSTKSIZE + KSTKGAP);
 	thiscpu->cpu_ts.ts_ss0 = GD_KD;
-	//ts.ts_esp0 = KSTACKTOP;
+	//ts.ts_esp0 = Kesp;
 	//ts.ts_ss0 = GD_KD;
 
 	// Initialize the TSS slot of the gdt.
@@ -331,7 +331,7 @@ page_fault_handler(struct Trapframe *tf)
 
 	// Call the environment's page fault upcall, if one exists.  Set up a
 	// page fault stack frame on the user exception stack (below
-	// UXSTACKTOP), then branch to curenv->env_pgfault_upcall.
+	// UXesp), then branch to curenv->env_pgfault_upcall.
 	//
 	// The page fault upcall might cause another page fault, in which case
 	// we branch to the page fault upcall recursively, pushing another
@@ -360,14 +360,14 @@ page_fault_handler(struct Trapframe *tf)
 	// LAB 4: Your code here.
 	if(curenv->env_pgfault_upcall)
 	{
-		uint32_t stacktop;
+		uint32_t esp;
 		//递归调用时，需要先压入一个空的32位长度
 		if(tf->tf_esp >= UXSTACKTOP-PGSIZE && tf->tf_esp < UXSTACKTOP)
-			stacktop = tf->tf_esp - 4 - sizeof(struct UTrapframe);
+			esp = tf->tf_esp - 4 - sizeof(struct UTrapframe);
 		else
-			stacktop = tf->tf_esp - sizeof(struct UTrapframe);
-		user_mem_assert(curenv, stacktop, sizeof(struct UTrapframe), PTE_U | PTE_P);
-		struct UTrapframe *utf = (struct UTrapframe *)stacktop;
+			esp = tf->tf_esp - sizeof(struct UTrapframe);
+		user_mem_assert(curenv, esp, sizeof(struct UTrapframe), PTE_U | PTE_P);
+		struct UTrapframe *utf = (struct UTrapframe *)esp;
 		//根据文档给的结构依次压栈
 		utf->utf_fault_va = fault_va;
 		utf->utf_err = tf->tf_err;
@@ -376,9 +376,9 @@ page_fault_handler(struct Trapframe *tf)
 		utf->utf_eflags = tf->tf_eflags;
 		utf->utf_esp = tf->tf_esp;
 
-		//修改eip返回用户进入异常处理前的地址，修改esp完成栈的切换
+		//修改eip返回用户进入异常处理前的地址，修改esp重新指向将UTF结构压入栈的栈顶地址
         tf->tf_eip = (uintptr_t)curenv->env_pgfault_upcall;
-        tf->tf_esp = (uintptr_t)stacktop;
+        tf->tf_esp = (uintptr_t)esp;
         env_run(curenv);
 	}
 	// Destroy the environment that caused the fault.

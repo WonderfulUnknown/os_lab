@@ -29,7 +29,14 @@ set_pgfault_handler(void (*handler)(struct UTrapframe *utf))
 	if (_pgfault_handler == 0) {
 		// First time through!
 		// LAB 4: Your code here.
-		panic("set_pgfault_handler not implemented");
+		envid_t env = sys_getenvid();
+		//为当前进程分配异常栈
+		r = sys_page_alloc(env, (void *)(UXSTACKTOP-PGSIZE), PTE_W | PTE_U | PTE_P);  
+        if (r < 0) 
+            panic("set_pgfault_handler:sys_page_alloc failed");
+		//系统调用，设置进程的env_pgfault_upcall属性
+        sys_env_set_pgfault_upcall(0, _pgfault_upcall);     
+		//panic("set_pgfault_handler not implemented");
 	}
 
 	// Save handler pointer for assembly to call.
