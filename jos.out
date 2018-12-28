@@ -1,9 +1,9 @@
 + ld obj/kern/kernel
 + mk obj/kern/kernel.img
 
-(process:14505): GLib-WARNING **: /build/glib2.0-7ZsPUq/glib2.0-2.48.2/./glib/gmem.c:483: custom memory allocation vtable not supported
+(process:11833): GLib-WARNING **: /build/glib2.0-7ZsPUq/glib2.0-2.48.2/./glib/gmem.c:483: custom memory allocation vtable not supported
 
-(process:14507): GLib-WARNING **: /build/glib2.0-7ZsPUq/glib2.0-2.48.2/./glib/gmem.c:483: custom memory allocation vtable not supported
+(process:11835): GLib-WARNING **: /build/glib2.0-7ZsPUq/glib2.0-2.48.2/./glib/gmem.c:483: custom memory allocation vtable not supported
 6828 decimal is 15254 octal!
 Physical memory: 66556K available, base = 640K, extended = 65532K
 check_page_alloc() succeeded!
@@ -17,6 +17,8 @@ SMP: CPU 2 starting
 SMP: CPU 3 starting
 [00000000] new env 00001000
 syscall is sys_getenvid
+trapno is T_SYSCALL
 syscall is sys_getenvid
-kernel panic on CPU 1 at kern/trap.c:274: assertion failed: !(read_eflags() & FL_IF)
-Welcome to the JOS keqemu: terminating on signal 15 from pid 14429
+trapno is T_SYSCALL
+kernel panic on CPU 1 at kern/trap.c:280: assertion failed: !(read_eflags() & FL_IF)
+qemu: terminating on signal 15 from pid 11757

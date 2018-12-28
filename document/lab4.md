@@ -340,3 +340,9 @@ _pgfault_handler被赋值为handler，会在 _pgfault_upcall中被调用，是�
 
 缺页异常处理逻辑
 ![](/document/picture/缺页异常处理逻辑.png)
+## 问题
+>为什么 user/faultalloc 和 user/faultallocbad 的表现不同
+
+# debug
+## tf->trap_no = 6?? illegal opcode
+page_fault_handler函数写错了，花了两天各种debug才发现是处理非递归调用的时候esp赋值出了问题。还有前面忘记给SYS_env_set_pgfault_upcall分配系统调用。

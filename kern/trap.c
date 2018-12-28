@@ -167,6 +167,8 @@ trap_init_percpu(void)
 void
 print_trapframe(struct Trapframe *tf)
 {
+	//panic("stop");
+	//mon_backtrace(0, 0, tf);
 	cprintf("TRAP frame at %p from CPU %d\n", tf, cpunum());
 	print_regs(&tf->tf_regs);
 	cprintf("  es   0x----%04x\n", tf->tf_es);
@@ -219,14 +221,17 @@ trap_dispatch(struct Trapframe *tf)
 	{
 	case T_PGFLT:
 		page_fault_handler(tf);
+		cprintf("trapno is T_PGFLT\n", tf->tf_trapno);
 		return;
 	case T_BRKPT:
 		monitor(tf);
+		cprintf("trapno is T_BRKPT\n", tf->tf_trapno);
 		return;
 	case T_SYSCALL:
 		tf->tf_regs.reg_eax = syscall(tf->tf_regs.reg_eax, 
 		tf->tf_regs.reg_edx, tf->tf_regs.reg_ecx, tf->tf_regs.reg_ebx, 
 		tf->tf_regs.reg_edi, tf->tf_regs.reg_esi);
+		cprintf("trapno is T_SYSCALL\n");
 		return;
 	}
 	// Handle spurious interrupts
@@ -243,6 +248,7 @@ trap_dispatch(struct Trapframe *tf)
 	// LAB 4: Your code here.
 	
 	// Unexpected trap: The user process or the kernel has a bug.
+	cprintf("printf trapframe in trap_dispatch\n");
 	print_trapframe(tf);
 	if (tf->tf_cs == GD_KT)
 		panic("unhandled trap in kernel");
@@ -365,8 +371,8 @@ page_fault_handler(struct Trapframe *tf)
 		if(tf->tf_esp >= UXSTACKTOP-PGSIZE && tf->tf_esp < UXSTACKTOP)
 			esp = tf->tf_esp - 4 - sizeof(struct UTrapframe);
 		else
-			esp = tf->tf_esp - sizeof(struct UTrapframe);
-		user_mem_assert(curenv, (void *)esp, sizeof(struct UTrapframe), PTE_U | PTE_P);
+			esp = UXSTACKTOP - sizeof(struct UTrapframe);
+		user_mem_assert(curenv, (void *)esp, sizeof(struct UTrapframe), PTE_U | PTE_P | PTE_W);
 		struct UTrapframe *utf = (struct UTrapframe *)esp;
 		//根据文档给的结构依次压栈
 		utf->utf_fault_va = fault_va;
@@ -384,6 +390,7 @@ page_fault_handler(struct Trapframe *tf)
 	// Destroy the environment that caused the fault.
 	cprintf("[%08x] user fault va %08x ip %08x\n",
 		curenv->env_id, fault_va, tf->tf_eip);
+	cprintf("print_trapframe in page_fault_handler\n");
 	print_trapframe(tf);
 	env_destroy(curenv);
 }
