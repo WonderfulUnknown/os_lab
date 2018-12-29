@@ -72,8 +72,6 @@ trap_init(void)
 	extern struct Segdesc gdt[];
 
 	// LAB 3: Your code here.
-
-
 	void divide_error();
 	void debug_exception();
 	void non_maskable_interrupt();
@@ -94,26 +92,39 @@ trap_init(void)
 
 	void system_call();
 
-	SETGATE(idt[T_DIVIDE], 1, GD_KT, divide_error, 0);
-	SETGATE(idt[T_DEBUG], 1, GD_KT, debug_exception, 0);
-	SETGATE(idt[T_NMI], 1, GD_KT, non_maskable_interrupt, 0);
-	SETGATE(idt[T_BRKPT], 1, GD_KT, break_point, 3);//!
-	SETGATE(idt[T_OFLOW], 1, GD_KT, overflow, 0);
-	SETGATE(idt[T_BOUND], 1, GD_KT, bounds_check, 0);
-	SETGATE(idt[T_ILLOP], 1, GD_KT, illegal_opcode, 0);
-	SETGATE(idt[T_DEVICE], 1, GD_KT, device_not_available, 0);
-	SETGATE(idt[T_DBLFLT], 1, GD_KT, double_fault, 0);
+	SETGATE(idt[T_DIVIDE], 0, GD_KT, divide_error, 0);
+	SETGATE(idt[T_DEBUG], 0, GD_KT, debug_exception, 0);
+	SETGATE(idt[T_NMI], 0, GD_KT, non_maskable_interrupt, 0);
+	SETGATE(idt[T_BRKPT], 0, GD_KT, break_point, 3);//!
+	SETGATE(idt[T_OFLOW], 0, GD_KT, overflow, 0);
+	SETGATE(idt[T_BOUND], 0, GD_KT, bounds_check, 0);
+	SETGATE(idt[T_ILLOP], 0, GD_KT, illegal_opcode, 0);
+	SETGATE(idt[T_DEVICE], 0, GD_KT, device_not_available, 0);
+	SETGATE(idt[T_DBLFLT], 0, GD_KT, double_fault, 0);
 
-	SETGATE(idt[T_TSS], 1, GD_KT, invalid_task_switch_segment, 0);
-	SETGATE(idt[T_SEGNP], 1, GD_KT, segment_not_present, 0);
-	SETGATE(idt[T_STACK], 1, GD_KT, stack_exception, 0);
-	SETGATE(idt[T_GPFLT], 1, GD_KT, general_protection_fault, 0);
-	SETGATE(idt[T_PGFLT], 1, GD_KT, page_fault, 0);
+	SETGATE(idt[T_TSS], 0, GD_KT, invalid_task_switch_segment, 0);
+	SETGATE(idt[T_SEGNP], 0, GD_KT, segment_not_present, 0);
+	SETGATE(idt[T_STACK], 0, GD_KT, stack_exception, 0);
+	SETGATE(idt[T_GPFLT], 0, GD_KT, general_protection_fault, 0);
+	SETGATE(idt[T_PGFLT], 0, GD_KT, page_fault, 0);
 
-	SETGATE(idt[T_FPERR], 1, GD_KT, floating_point_error, 0);
+	SETGATE(idt[T_FPERR], 0, GD_KT, floating_point_error, 0);
 
 	SETGATE(idt[T_SYSCALL], 0, GD_KT, system_call, 3);
 
+	void irq_timer();
+	void irq_kbd();
+	void irq_serial();
+	void irq_spurious();
+	void irq_ide();
+	void irq_error();
+
+	SETGATE(idt[IRQ_OFFSET + IRQ_TIMER], 0, GD_KT, irq_timer, 0);
+	SETGATE(idt[IRQ_OFFSET + IRQ_KBD], 0, GD_KT, irq_kbd, 0);
+	SETGATE(idt[IRQ_OFFSET + IRQ_SERIAL], 0, GD_KT, irq_serial, 0);
+	SETGATE(idt[IRQ_OFFSET + IRQ_SPURIOUS], 0, GD_KT, irq_spurious, 0);
+	SETGATE(idt[IRQ_OFFSET + IRQ_IDE], 0, GD_KT, irq_ide, 0);
+	SETGATE(idt[IRQ_OFFSET + IRQ_ERROR], 0, GD_KT, irq_error, 0);
 	// Per-CPU setup 
 	trap_init_percpu();
 }
@@ -234,6 +245,11 @@ trap_dispatch(struct Trapframe *tf)
 		tf->tf_regs.reg_edi, tf->tf_regs.reg_esi);
 		//cprintf("trapno is T_SYSCALL\n");
 		return;
+	// case IRQ_OFFSET + IRQ_TIMER:
+	// 	//切换进程
+	// 	lapic_eoi();
+    //     sched_yield();
+    //     return;
 	}
 	// Handle spurious interrupts
 	// The hardware sometimes raises these because of noise on the
@@ -247,7 +263,13 @@ trap_dispatch(struct Trapframe *tf)
 	// Handle clock interrupts. Don't forget to acknowledge the
 	// interrupt using lapic_eoi() before calling the scheduler!
 	// LAB 4: Your code here.
-	
+	if(tf->tf_trapno == IRQ_OFFSET + IRQ_TIMER)
+	{
+		//切换进程
+		lapic_eoi();
+		sched_yield();
+		return;
+	}
 	// Unexpected trap: The user process or the kernel has a bug.
 	cprintf("printf trapframe in trap_dispatch\n");
 	print_trapframe(tf);
@@ -287,7 +309,7 @@ trap(struct Trapframe *tf)
 		// LAB 4: Your code here.
 		lock_kernel();
 		assert(curenv);
-
+		//cprintf("lock the kernel\n");
 		// Garbage collect if current enviroment is a zombie
 		if (curenv->env_status == ENV_DYING) {
 			env_free(curenv);

@@ -352,7 +352,7 @@ page_fault_handler函数写错了，花了两天各种debug才发现是处理非
 ## pgfault
 _pgfault_upcall中调用的页错误处理函数。调用前，父子进程的页错误地址都引用同一页物理内存，该函数作用是分配一个物理页面使得两者独立。
 在pgfault函数中先判断是否页错误是由写时拷贝造成的，如果不是则panic。使用了特殊地址PFTEMP，专门用来发生page fault的时候拷贝内容。先解除addr原先的页映射关系，然后将addr映射到PFTEMP映射的页，最后解除PFTEMP的页映射关系。
-## uvpt
+### uvpt
 在memlayout.h中定义，存储用户态虚拟页表项，同时lib/entry.S 设置了 uvpt 和 uvpd
 ```
 #if JOS_USER
@@ -361,3 +361,45 @@ extern volatile pde_t uvpd[];     // VA of current page directory
 #endif
 ```
 ## duppage
+该函数的作用是复制父、子进程的页面映射。尤其注意一个权限问题。
+## fork
+
+# 练习13
+##　trapentry.S
+初始化一个合适的 IDT 入口，并为 IRQ 0-15 提供处理函数。
+### IRQ
+在trap.h中定义，只有6个
+```
+#define IRQ_OFFSET	32	// IRQ 0 corresponds to int IRQ_OFFSET
+
+// Hardware IRQ numbers. We receive these as (IRQ_OFFSET+IRQ_WHATEVER)
+#define IRQ_TIMER        0
+#define IRQ_KBD          1
+#define IRQ_SERIAL       4
+#define IRQ_SPURIOUS     7
+#define IRQ_IDE         14
+#define IRQ_ERROR       19
+```
+# 练习14
+## trap_dispatch
+修改该函数使得在时钟中断的时候能够选择切换进程
+### lapic_eoi
+在lapic.c中定义
+```
+// Acknowledge interrupt.
+void
+lapic_eoi(void)
+{
+	if (lapic)
+		lapicw(EOI, 0);
+}
+```
+上网查询得知作用是作用是告诉LAPIC已经收到并调度中断了，于是LAPIC从中断请求队列中将其删除。如果不加上，时钟中断只发生一次就再也不会发生了。
+# debug 无法通过 assert(!(read_eflags() & FL_IF));
+>加上e->env_tf.tf_eflags |= FL_IF;前面所有的跑分都错了？？
+
+后来上网查了一下在下面博客得到解答[https://www.jianshu.com/p/8d8425e45c49](https://www.jianshu.com/p/8d8425e45c49)
+
+>后面又疯狂内核态缺页= =前面部分通过的测试又错了
+！经过大佬点播，发现IRQ(外部中断)是没有error code的
+
