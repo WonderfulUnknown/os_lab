@@ -343,6 +343,21 @@ _pgfault_handler被赋值为handler，会在 _pgfault_upcall中被调用，是�
 ## 问题
 >为什么 user/faultalloc 和 user/faultallocbad 的表现不同
 
-# debug
-## tf->trap_no = 6?? illegal opcode
+两段代码发生缺页中断时使用的处理函数handler都一样，不同的是在umain函数中输出时faultalloc.c选择了cprintf()，而faultallocbad.c选择了sys_cputs()。
+sys_cputs()直接通过lib/syscall.c发起系统调用，中间检查了内存，所以还没触发缺页中断就直接panic。
+cprintf()在调用 sys_cputs()之前，首先在用户态执行了vprintfmt()将要输出的字符串存入结构体 b 中。在此过程中试图访问 0xdeadbeef 地址，触发了页错误，然后系统调用用户自己选择的handler()来在用户态下处理缺页错误。
+# debug tf->trap_no = 6?? illegal opcode
 page_fault_handler函数写错了，花了两天各种debug才发现是处理非递归调用的时候esp赋值出了问题。还有前面忘记给SYS_env_set_pgfault_upcall分配系统调用。
+# 练习12
+## pgfault
+_pgfault_upcall中调用的页错误处理函数。调用前，父子进程的页错误地址都引用同一页物理内存，该函数作用是分配一个物理页面使得两者独立。
+在pgfault函数中先判断是否页错误是由写时拷贝造成的，如果不是则panic。使用了特殊地址PFTEMP，专门用来发生page fault的时候拷贝内容。先解除addr原先的页映射关系，然后将addr映射到PFTEMP映射的页，最后解除PFTEMP的页映射关系。
+## uvpt
+在memlayout.h中定义，存储用户态虚拟页表项，同时lib/entry.S 设置了 uvpt 和 uvpd
+```
+#if JOS_USER
+extern volatile pte_t uvpt[];     // VA of "virtual page table"
+extern volatile pde_t uvpd[];     // VA of current page directory
+#endif
+```
+## duppage

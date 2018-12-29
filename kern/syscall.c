@@ -361,51 +361,51 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 
 	//panic("syscall not implemented");
 	int ret = 0;
-
+	//此处cprintf影响faultregs打分
 	switch (syscallno) {
 	case SYS_cputs:
 		sys_cputs((const char*)a1,(size_t)a2);
-		cprintf("syscall is sys_cputs\n");
+		//cprintf("syscall is sys_cputs\n");
 		break;
 	case SYS_cgetc:
 		ret = sys_cgetc();
-		cprintf("syscall is sys_cgetc\n");
+		//cprintf("syscall is sys_cgetc\n");
 		break;
 	case SYS_env_destroy:
 		ret = sys_env_destroy((envid_t)a1);
-		cprintf("syscall is sys_env_destroy\n");
+		//cprintf("syscall is sys_env_destroy\n");
 		break;
 	case SYS_getenvid:
 		ret = sys_getenvid();
-		cprintf("syscall is sys_getenvid\n");
+		//cprintf("syscall is sys_getenvid\n");
 		break;
 	case SYS_yield:
 		sys_yield();
-		cprintf("syscall is sys_yield\n");
+		//cprintf("syscall is sys_yield\n");
 		break;
 	case SYS_exofork:
         ret = (int)sys_exofork();
-		cprintf("syscall is sys_exofork\n");
+		//cprintf("syscall is sys_exofork\n");
         break;
     case SYS_env_set_status:
         ret = sys_env_set_status((envid_t)a1, (int)a2);
-		cprintf("syscall is SYS_env_set_status\n");
+		//cprintf("syscall is SYS_env_set_status\n");
         break;
     case SYS_page_alloc:
         ret = sys_page_alloc((envid_t)a1, (void *)a2, (int)a3);
-		cprintf("syscall is sys_page_alloc\n");
+		//cprintf("syscall is sys_page_alloc\n");
 		break;
     case SYS_page_map:
         ret = sys_page_map((envid_t)a1, (void *)a2, (envid_t)a3, (void*)a4, (int)a5);
-		cprintf("syscall is sys_page_map\n");
+		//cprintf("syscall is sys_page_map\n");
         break;
     case SYS_page_unmap:
         ret = sys_page_unmap((envid_t)a1, (void *)a2);
-		cprintf("syscall is sys_page_unmap\n");
+		//cprintf("syscall is sys_page_unmap\n");
         break;
 	case SYS_env_set_pgfault_upcall:
 		ret = sys_env_set_pgfault_upcall((envid_t)a1, (void *)a2);
-		cprintf("syscall is sys_env_set_pgfault_upcall\n");
+		//cprintf("syscall is sys_env_set_pgfault_upcall\n");
 		break;
 	default:
 		return -E_NO_SYS;

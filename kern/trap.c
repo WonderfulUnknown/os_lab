@@ -217,21 +217,22 @@ trap_dispatch(struct Trapframe *tf)
 {
 	// Handle processor exceptions.
 	// LAB 3: Your code here.
+	//此处cprintf影响faultregs打分
 	switch (tf->tf_trapno)
 	{
 	case T_PGFLT:
 		page_fault_handler(tf);
-		cprintf("trapno is T_PGFLT\n", tf->tf_trapno);
+		//cprintf("trapno is T_PGFLT\n", tf->tf_trapno);
 		return;
 	case T_BRKPT:
 		monitor(tf);
-		cprintf("trapno is T_BRKPT\n", tf->tf_trapno);
+		//cprintf("trapno is T_BRKPT\n", tf->tf_trapno);
 		return;
 	case T_SYSCALL:
 		tf->tf_regs.reg_eax = syscall(tf->tf_regs.reg_eax, 
 		tf->tf_regs.reg_edx, tf->tf_regs.reg_ecx, tf->tf_regs.reg_ebx, 
 		tf->tf_regs.reg_edi, tf->tf_regs.reg_esi);
-		cprintf("trapno is T_SYSCALL\n");
+		//cprintf("trapno is T_SYSCALL\n");
 		return;
 	}
 	// Handle spurious interrupts
