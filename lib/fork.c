@@ -27,6 +27,9 @@ pgfault(struct UTrapframe *utf)
 	// LAB 4: Your code here.
 	if((err & FEC_WR) == 0 || (uvpt[PGNUM(addr)] & PTE_COW) == 0)
 		panic("pgfault:can't copy-on-write\n");
+	// if (!((err & FEC_WR) && (uvpd[PDX(addr)] & PTE_P) &&
+	// 		(uvpt[PGNUM(addr)] & PTE_P) && (uvpt[PGNUM(addr)] & PTE_COW)))
+	// 	panic("not copy-on-write");
 	// Allocate a new page, map it at a temporary location (PFTEMP),
 	// copy the data from the old page to the new page, then move the new
 	// page to the old page's address.

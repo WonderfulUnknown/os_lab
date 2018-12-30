@@ -403,3 +403,22 @@ lapic_eoi(void)
 >后面又疯狂内核态缺页= =前面部分通过的测试又错了
 ！经过大佬点播，发现IRQ(外部中断)是没有error code的
 
+# 练习15
+##传递消息的数据结构
+在inc/env.h中定义
+```
+	// Lab 4 IPC
+	bool env_ipc_recving;		// Env is blocked receiving
+	void *env_ipc_dstva;		// VA at which to map received page
+	uint32_t env_ipc_value;		// Data value sent to us
+	envid_t env_ipc_from;		// envid of the sender
+	int env_ipc_perm;		// Perm of page mapping received
+```
+## sys_ipc_send
+检测是否能发送相应的内容
+## sys_ipc_recv
+将进程设置为等待接受消息的状态，然后切换进程
+## ipc_recv
+设置好Env结构体中和ipc部分相关的值
+## ipc_send
+阻塞式发送，一直到对方接受为止,如果对方占时不接受，就调用调度算法，切换进程。

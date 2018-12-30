@@ -41,5 +41,6 @@ set_pgfault_handler(void (*handler)(struct UTrapframe *utf))
 	}
 	// Save handler pointer for assembly to call.
 	_pgfault_handler = handler;
-	cprintf("set_pgfault_handler:success\n");
+	//输出影响primes打分
+	//cprintf("set_pgfault_handler:success\n");
 }
